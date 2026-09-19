@@ -36,9 +36,11 @@ kb/                   the knowledge base — no interface code
 web/                  the interface — no business knowledge
   index.html          page shell
   schema.js           which control creates which Prolog fact (§4.1);
-                      7 sections, 23 questions
-  app.js              rendering, progress, saved assessments
+                      7 sections, 9 questions, 15 inputs
+  app.js              step navigation, decision-path diagram, saved assessments
   styles.css
+  public/             trademark.png (source) and the logo.png / icon.png
+                      generated from it; brand palette is sampled from it
   vendor/             Tau-Prolog core + lists modules
   kb-bundle.js        generated; lets the page work from file://
   cases-bundle.js     generated; the six §12 cases as loadable examples
@@ -61,13 +63,14 @@ in `kb/`. Editing a rule means editing `kb/boss_rules.pl` and nothing else.
 ## Testing
 
 ```
-npm test               # Tau-Prolog + UI-mapping integration, 6 cases each
+npm test               # Tau-Prolog + UI mapping + rule/fact coverage
 npm run test:swi       # the same 6 cases under SWI-Prolog
 npm run test:e2e       # drives the page in Chromium (needs playwright)
 ```
 
-All six SRS §12 validation cases pass under both engines with identical
-rule traces.
+All eight validation cases pass under both engines with identical rule
+traces. `npm test` also asserts coverage: **25/25 rules fire** and **25/25
+fixed facts are called** by a rule or derivation.
 
 | Case | Scenario | Expected | CF |
 |---|---|---|---|
@@ -77,6 +80,8 @@ rule traces.
 | 4 | Home-based web agency | FURTHER VALIDATION REQUIRED | 0.0 |
 | 5 | Grocery shop, pawned-jewellery funding | NOT RECOMMENDED | −1.0 |
 | 6 | Second salon branch | PROCEED WITH CAUTION | +0.6 |
+| 7 | First-time home baker *(added: R04, R17)* | FURTHER VALIDATION REQUIRED | 0.0 |
+| 8 | Food outlet, licence blocker *(added: R21)* | NOT RECOMMENDED | −1.0 |
 
 ## What it does not do
 

@@ -109,6 +109,45 @@ effective_funding_cost(R) :-
     stated_rate(R).
 
 % ------------------------------------------------------------
+% Domain validation and scope - what the type facts in boss_kb.pl
+% are for. Every categorical answer must be a value this knowledge
+% base recognises, and the business itself must be one B0SS is
+% allowed to screen (SRS section 2).
+% ------------------------------------------------------------
+
+known_value(business_type(T))   :- supported_business(T).
+known_value(demand_evidence(unknown)).
+known_value(demand_evidence(D)) :- demand_level(D).
+known_value(cash_cycle(C))      :- cash_cycle_type(C).
+known_value(legal_status(L))    :- legal_value(L).
+known_value(funding_source(F))  :- safe_funding(F).
+known_value(funding_source(F))  :- dangerous_funding(F).
+
+checked_input(demand_evidence(_)).
+checked_input(cash_cycle(_)).
+checked_input(legal_status(_)).
+checked_input(funding_source(_)).
+
+% An answer this knowledge base does not recognise. The system must
+% not reason from a value it has no facts about.
+unrecognised(Name) :-
+    checked_input(Fact),
+    call(Fact),
+    \+ known_value(Fact),
+    functor(Fact, Name, _).
+
+% SRS section 2: B0SS must not evaluate businesses outside the
+% supported list - pharmaceuticals, finance, franchises and the rest
+% need specialist judgement these rules do not contain.
+in_scope :-
+    business_type(T),
+    supported_business(T).
+
+out_of_scope(T) :-
+    business_type(T),
+    \+ supported_business(T).
+
+% ------------------------------------------------------------
 % Critical unknowns - SRS 9.1 step 2 (decision 4)
 % Demand, price, capital and legal status are the four inputs
 % that block a positive answer when they are not known.

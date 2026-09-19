@@ -4,36 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>B0SS — Business Opportunity Screening</title>
-<meta name="description" content="A rule-based expert system that screens a proposed small business and tells you which assumptions you have not yet tested.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2314130F'/><text x='16' y='23' font-size='19' font-family='monospace' fill='%23FDFDFC' text-anchor='middle'>0</text></svg>">
+<meta name="description" content="A rule-based expert system that screens a proposed small business and shows exactly which assumptions are still untested.">
+<meta name="theme-color" content="#123E63">
+<link rel="icon" href="public/icon.png">
+<link rel="apple-touch-icon" href="public/icon.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <!-- ============ LANDING ============ -->
 <main id="view-landing" class="wrap landing">
-  <div>
-    <div class="mark">B0SS</div>
-    <p class="tagline">Business Opportunity Screening System</p>
+  <div class="landing-in">
+    <img class="logo" src="public/logo.png" width="560" height="416"
+         alt="B0SS Project — Business Opportunity Screening System">
+    <div class="landing-copy">
+    <h1>Screen a business opportunity</h1>
+    <p class="tagline">A rule-based expert system</p>
 
     <p class="lede">
-      A first-pass screening for a proposed small business. It applies 25 decision
-      rules captured from a small-business advisor to what you tell it, and returns
-      a recommendation you can trace back to the rules that produced it.
-    </p>
-    <p class="lede">
-      Its real output is not the verdict. It is the list of things you have
-      <em>assumed but not yet checked</em>.
+      Nine questions about a proposed small business. You get a recommendation,
+      and — more usefully — <em>the list of things you have assumed but not checked</em>.
     </p>
 
     <div class="cta-row">
-      <button class="btn btn-primary btn-lg" id="btn-start">Ask the expert</button>
-      <button class="btn btn-ghost btn-lg" id="btn-demo">Load an example</button>
+      <button class="btn btn-primary btn-lg" id="btn-start">Start screening</button>
     </div>
 
     <p class="hint">
-      Seven short sections, about five minutes. Nothing you enter leaves this device.
+      Nine questions, about three minutes. Nothing leaves this device.<br>
+      <button class="linkish" id="btn-demo">Load a worked example instead</button>
     </p>
+    </div>
 
     <section class="history hidden" id="history">
       <h2>Previous assessments</h2>
@@ -47,21 +48,14 @@
   <header class="topbar">
     <div class="topbar-in">
       <button class="btn btn-ghost btn-sm" id="btn-home">← Home</button>
-      <span class="name">B0SS</span>
-      <span class="step-count" id="step-count">1 / 7</span>
+      <span class="mark"><img src="public/icon.png" alt=""><span class="wm">B<span class="zero">0</span>SS</span></span>
+      <span class="step-count" id="step-count"></span>
     </div>
+    <div class="dots" id="dots"></div>
   </header>
-
   <main class="wrap assess">
-    <div class="assess-head">
-      <h1>Let's screen this opportunity</h1>
-      <p>
-        Answer what you actually know. Where a question matters and you do not know
-        the answer, say so — B0SS treats "I don't know" as a real answer and will
-        tell you to go and find out rather than guessing on your behalf.
-      </p>
-    </div>
-    <div id="sections"></div>
+    <nav class="rail" id="rail" aria-label="Questions"></nav>
+    <div class="stage" id="step-host"></div>
   </main>
 </div>
 
@@ -70,11 +64,14 @@
   <header class="topbar">
     <div class="topbar-in">
       <button class="btn btn-ghost btn-sm" id="btn-home-2">← Home</button>
-      <span class="name">B0SS</span>
+      <span class="mark"><img src="public/icon.png" alt=""><span class="wm">B<span class="zero">0</span>SS</span></span>
       <span class="step-count">Result</span>
     </div>
   </header>
-  <main class="wrap result" id="result-body"></main>
+  <main class="wrap result">
+    <aside class="res-side" id="result-side"></aside>
+    <div class="res-main" id="result-body"></div>
+  </main>
 </div>
 
 <div class="toast" id="toast"></div>

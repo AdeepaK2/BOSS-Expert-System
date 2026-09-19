@@ -63,8 +63,13 @@ unknown_action(price,   'Validate the selling price against real competitor pric
 unknown_action(capital, 'Work out your actual startup cost and monthly running cost before deciding anything else.').
 unknown_action(legal,   'Find out exactly which licences or approvals this business needs, and whether you can get them.').
 
-gap_action(test_demand,   'Demand has not been tested with money.').
-gap_action(validate_price,'The selling price has not been validated.').
+% SRS section 6 "validation gap": critical items that are assumed rather
+% than known. These are the heart of what B0SS is for.
+gap_label(test_demand,    'Demand has not been tested with money.').
+gap_label(validate_price, 'The selling price has not been validated.').
+
+gap_action(test_demand,    'Take one deposit, pre-order or paid trial before committing money.').
+gap_action(validate_price, 'Check your price against two real competitor prices and three likely customers.').
 
 % ---------- CF labels, SRS section 8 ----------
 
@@ -78,16 +83,86 @@ cf_label(CF, 'Probably')          :- CF >= 0.5, CF < 0.7.
 cf_label(CF, 'Almost certainly')  :- CF >= 0.7, CF < 0.9.
 cf_label(CF, 'Definitely')        :- CF >= 0.9.
 
+% ---------- The six intermediate conclusions (SRS section 6) ----------
+
+conclusion_label(market,     'Demand').
+conclusion_label(competition,'Competition').
+conclusion_label(finance,    'Money').
+conclusion_label(owner,      'Owner').
+conclusion_label(operations, 'Operations').
+conclusion_label(risk,       'Risk').
+
+conclusion_word(market, high,     'Strong').
+conclusion_word(market, moderate, 'Moderate').
+conclusion_word(market, low,      'No evidence').
+conclusion_word(competition, strong,   'Defensible').
+conclusion_word(competition, adequate, 'Adequate').
+conclusion_word(competition, weak,     'Exposed').
+conclusion_word(finance, ready,     'Funded').
+conclusion_word(finance, marginal,  'Short').
+conclusion_word(finance, not_ready, 'Not funded').
+conclusion_word(owner, strong,   'Experienced').
+conclusion_word(owner, adequate, 'Learnable').
+conclusion_word(owner, weak,     'Unready').
+conclusion_word(operations, ready,     'Workable').
+conclusion_word(operations, marginal,  'Tight').
+conclusion_word(operations, not_ready, 'Not workable').
+conclusion_word(risk, low,      'Low').
+conclusion_word(risk, moderate, 'Moderate').
+conclusion_word(risk, high,     'High').
+conclusion_word(risk, critical, 'Critical').
+
+% Whether a conclusion reads as positive, mixed or negative. Depends on
+% the dimension: 'high' is good for demand and bad for risk.
+conclusion_tone(market, high, good).      conclusion_tone(market, moderate, warn).
+conclusion_tone(market, low, bad).
+conclusion_tone(competition, strong, good). conclusion_tone(competition, adequate, warn).
+conclusion_tone(competition, weak, bad).
+conclusion_tone(finance, ready, good).    conclusion_tone(finance, marginal, warn).
+conclusion_tone(finance, not_ready, bad).
+conclusion_tone(owner, strong, good).     conclusion_tone(owner, adequate, warn).
+conclusion_tone(owner, weak, bad).
+conclusion_tone(operations, ready, good). conclusion_tone(operations, marginal, warn).
+conclusion_tone(operations, not_ready, bad).
+conclusion_tone(risk, low, good).         conclusion_tone(risk, moderate, warn).
+conclusion_tone(risk, high, bad).         conclusion_tone(risk, critical, bad).
+
+% ---------- The SRS 9.1 decision ladder, in plain words ----------
+
+gate_label(scope,        'Is this a business B0SS can screen?').
+gate_label(override,     'Any absolute deal-breaker?').
+gate_label(unknowns,     'Is anything critical still unknown?').
+gate_label(proceed,      'Is the core case clean?').
+gate_label(caution,      'Is the core case sound with fixable weaknesses?').
+gate_label(in_this_form, 'Are there two or more serious risks?').
+gate_label(insufficient, 'Not enough to answer either way.').
+
+gate_detail(override,     'Dangerous funding, margin below funding cost, or a legal blocker.').
+gate_detail(unknowns,     'Demand, price, capital or licensing.').
+gate_detail(proceed,      'Demand, money, owner and operations all hold, with no weakness.').
+gate_detail(caution,      'Core factors positive and at most two weaknesses.').
+gate_detail(in_this_form, 'Serious but correctable - the plan should change first.').
+
+gate_outcome(scope,        out_of_scope).
+gate_outcome(override,     not_recommended).
+gate_outcome(unknowns,     further_validation_required).
+gate_outcome(proceed,      proceed).
+gate_outcome(caution,      proceed_with_caution).
+gate_outcome(in_this_form, not_recommended_in_this_form).
+gate_outcome(insufficient, further_validation_required).
+
 % ---------- Verdict headline text ----------
 
+verdict_text(out_of_scope, 'OUTSIDE WHAT B0SS CAN SCREEN').
 verdict_text(proceed, 'PROCEED').
 verdict_text(proceed_with_caution, 'PROCEED WITH CAUTION').
 verdict_text(further_validation_required, 'FURTHER VALIDATION REQUIRED').
 verdict_text(not_recommended, 'NOT RECOMMENDED').
 verdict_text(not_recommended_in_this_form, 'NOT RECOMMENDED IN THIS FORM').
 
-verdict_blurb(proceed, 'Continue to detailed planning. This does not mean the business will succeed.').
+verdict_blurb(out_of_scope, 'This type needs specialist judgement these rules do not contain.').
+verdict_blurb(proceed, 'Continue to detailed planning. This is not a prediction of success.').
 verdict_blurb(proceed_with_caution, 'The core case is positive, but fix the concerns below before or during launch.').
-verdict_blurb(further_validation_required, 'Something critical is unknown. Find it out before deciding; the list below is what to check.').
-verdict_blurb(not_recommended, 'A blocking condition makes this unacceptable in its current form, whatever else is strong.').
+verdict_blurb(further_validation_required, 'Something critical is unknown. Check it before deciding.').
+verdict_blurb(not_recommended, 'A blocking condition makes this unacceptable, whatever else is strong.').
 verdict_blurb(not_recommended_in_this_form, 'Change the scale, model, dependency or timing, then assess again.').

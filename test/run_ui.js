@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const pl = require('../web/vendor/tau-prolog-core.js');
 require('../web/vendor/tau-prolog-lists.js')(pl);
-const { SECTIONS, factsFor } = require('../web/schema.js');
+const { SECTIONS, factsFor, answersFromFacts } = require('../web/schema.js');
 
 const KB = path.join(__dirname, '..', 'kb');
 const PROGRAM = ':- use_module(library(lists)).\n' +
@@ -38,14 +38,15 @@ function ask(session, goal) {
        .matchAll(/:- dynamic\((\w+)\/1\)/g)].map(m => m[1])
   );
   const emitted = new Set();
-  for (const c of CASES) for (const f of factsFor(c.answers)) emitted.add(f.split('(')[0]);
+  for (const c of CASES) for (const f of factsFor(answersFromFacts(c.answers))) emitted.add(f.split('(')[0]);
   const undeclared = [...emitted].filter(f => !declared.has(f));
   if (undeclared.length) { console.log('  FAIL  facts not declared dynamic: ' + undeclared.join(', ')); fails++; }
   else console.log('  PASS  all ' + emitted.size + ' emitted fact names are declared in boss_derive.pl');
 
   for (const c of CASES) {
     const session = pl.create(2000000);
-    const facts = factsFor(c.answers);
+    // Exactly what the browser does: case facts -> control answers -> facts.
+    const facts = factsFor(answersFromFacts(c.answers));
     const program = PROGRAM + '\n' + facts.map(f => f + '.').join('\n');
     try {
       await new Promise((res, rej) => session.consult(program, { success: res, error: e => rej(new Error(pl.format_answer(e))) }));

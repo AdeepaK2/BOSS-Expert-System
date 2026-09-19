@@ -23,11 +23,11 @@ load([F|Fs]) :- assertz(F), load(Fs).
 run(Id, ok) :-
     case(Id, Name, expected(ERec, ECF), Facts),
     clear, load(Facts),
-    assess(assessment(Rec, CF, _, _, Miss, _, Flags, Trace, _)),
+    assess(assessment(Rec, CF, _, _, Miss, _, Trace, _, Scope, _, _)),
     length(Trace, NT),
     (   Rec == ERec, abs(CF - ECF) < 0.001
-    ->  format("  PASS  Case ~w  ~w~n        -> ~w (~w)  rules fired: ~w~n",
-               [Id, Name, Rec, CF, NT])
+    ->  format("  PASS  Case ~w  ~w~n        -> ~w (~w)  rules fired: ~w  scope: ~w~n",
+               [Id, Name, Rec, CF, NT, Scope])
     ;   format("  FAIL  Case ~w  ~w~n        expected ~w (~w)  got ~w (~w)~n        missing=~w flags=~w~n",
                [Id, Name, ERec, ECF, Rec, CF, Miss, Flags]),
         fail
@@ -36,7 +36,8 @@ run(Id, ok) :-
 main :-
     format("~nB0SS validation - SRS section 12~n~n"),
     findall(Id, case(Id, _, _, _), Ids),
+    length(Ids, N),
     (   forall(member(Id, Ids), run(Id, ok))
-    ->  format("~nAll 6 cases passed.~n~n"), halt(0)
+    ->  format("~nAll ~w cases passed.~n~n", [N]), halt(0)
     ;   format("~nFailures above.~n~n"), halt(1)
     ).

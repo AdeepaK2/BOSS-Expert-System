@@ -32,9 +32,14 @@ unfold(C, C).
 
 % A rule fires when its body succeeds. Id is always bound before
 % rule/3 is called, so only that one clause is ever executed.
+%
+% The \+ \+ gives exactly one solution per rule. Without it a rule whose
+% body consults holds/1 succeeds once per rule that supports the same
+% conclusion - R23 yields two identical solutions when both R07 and R12
+% conclude financial_readiness(ready).
 fires(Id) :-
     rule_level(Id, _),
-    rule(Id, _, _).
+    \+ \+ rule(Id, _, _).
 
 % What an applicable rule up to level L concludes.
 holds_upto(L, C) :-
@@ -95,16 +100,14 @@ absolute_override :-
     rule(Id, _, _),
     !.
 
-override_rule(Id) :-
-    member(Id, [r10, r11, r21]),
-    rule(Id, _, _).
-
 % ------------------------------------------------------------
 % SRS 9.1 priority order
 % ------------------------------------------------------------
 
 recommendation(Rec, CF) :-
-    (   absolute_override
+    (   out_of_scope(_)
+    ->  Rec = out_of_scope,                  CF = 0.0
+    ;   absolute_override
     ->  Rec = not_recommended,               CF = -1.0
     ;   critical_unknown(_)
     ->  Rec = further_validation_required,   CF = 0.0
@@ -115,6 +118,48 @@ recommendation(Rec, CF) :-
     ;   fires(r25)
     ->  Rec = not_recommended_in_this_form,  CF = -0.8
     ;   Rec = further_validation_required,   CF = 0.0
+    ).
+
+% ------------------------------------------------------------
+% The path through the SRS 9.1 ladder that produced this answer.
+% Returned as a list of d(Gate, pass|exit, Detail) so the interface can
+% draw the route actually taken. This is derived from the same checks
+% recommendation/2 makes - it is not a hand-drawn picture of them.
+% ------------------------------------------------------------
+
+override_fired(Id) :-
+    member(Id, [r10, r11, r21]),
+    rule(Id, _, _).
+
+decision_path(P) :-
+    (   out_of_scope(T)
+    ->  P = [d(scope, exit, T)]
+    ;   S = d(scope, pass, ok),
+        (   absolute_override
+        ->  findall(I, override_fired(I), Os),
+            P = [S, d(override, exit, Os)]
+        ;   O = d(override, pass, []),
+            (   critical_unknown(_)
+            ->  findall(U, critical_unknown(U), Us0), sort(Us0, Us),
+                P = [S, O, d(unknowns, exit, Us)]
+            ;   U = d(unknowns, pass, []),
+                weakness_count(W),
+                severe_risk_count(V),
+                (   fires(r23)
+                ->  P = [S, O, U, d(proceed, exit, W)]
+                ;   Pr = d(proceed, pass, W),
+                    (   fires(r24)
+                    ->  P = [S, O, U, Pr, d(caution, exit, W)]
+                    ;   C = d(caution, pass, W),
+                        (   fires(r25)
+                        ->  P = [S, O, U, Pr, C, d(in_this_form, exit, V)]
+                        ;   P = [S, O, U, Pr, C, d(in_this_form, pass, V),
+                                 d(insufficient, exit, 0)]
+                        )
+                    )
+                )
+            )
+        )
     ).
 
 % ------------------------------------------------------------
@@ -147,10 +192,6 @@ gaps(G) :-
     findall(Item, holds(validation_gap(Item)), L0),
     sort(L0, G).
 
-red_flags(F) :-
-    findall(Flag, holds(red_flag(Flag)), L0),
-    sort(L0, F).
-
 first_n(0, _, []) :- !.
 first_n(_, [], []) :- !.
 first_n(N, [H|T], [H|R]) :- N1 is N - 1, first_n(N1, T, R).
@@ -159,15 +200,39 @@ first_n(N, [H|T], [H|R]) :- N1 is N - 1, first_n(N1, T, R).
 % Single entry point queried by the interface.
 % ------------------------------------------------------------
 
-assess(assessment(Rec, CF, Pos, Con, Missing, Gaps, Flags, Trace, Money)) :-
+assess(assessment(Rec, CF, Pos, Con, Missing, Gaps, Trace, Money, Scope, Concl, Path)) :-
+    scope(Scope),
+    conclusions(Concl),
+    decision_path(Path),
     recommendation(Rec, CF),
     positives(Pos),
     concerns(Con),
     missing(Missing),
     gaps(Gaps),
-    red_flags(Flags),
     trace(Trace),
     money(Money).
+
+% The six intermediate conclusions of SRS section 6, for the summary
+% panel. Each is whatever the applicable rules concluded.
+conclusion(market,     V) :- holds(market_attractiveness(V)).
+conclusion(competition,V) :- holds(competitive_position(V)).
+conclusion(finance,    V) :- holds(financial_readiness(V)).
+conclusion(owner,      V) :- holds(owner_readiness(V)).
+conclusion(operations, V) :- holds(operational_readiness(V)).
+conclusion(risk,       V) :- holds(overall_risk(V)).
+
+conclusions(L) :-
+    findall(c(K, V), conclusion(K, V), L0),
+    sort(L0, L).
+
+% Scope and input validation (SRS section 2).
+scope(scope(State, Bad)) :-
+    ( out_of_scope(T) -> State = out_of_scope(T)
+    ; in_scope        -> State = ok
+    ;                    State = ok
+    ),
+    findall(N, unrecognised(N), Bad0),
+    sort(Bad0, Bad).
 
 % Visible arithmetic for the explanation (SRS section 10).
 money(money(Req, Funded, Gap)) :-
