@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B0SS — Business Opportunity Screening</title>
+<meta name="description" content="A rule-based expert system that screens a proposed small business and tells you which assumptions you have not yet tested.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2314130F'/><text x='16' y='23' font-size='19' font-family='monospace' fill='%23FDFDFC' text-anchor='middle'>0</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ LANDING ============ -->
+<main id="view-landing" class="wrap landing">
+  <div>
+    <div class="mark">B0SS</div>
+    <p class="tagline">Business Opportunity Screening System</p>
+
+    <p class="lede">
+      A first-pass screening for a proposed small business. It applies 25 decision
+      rules captured from a small-business advisor to what you tell it, and returns
+      a recommendation you can trace back to the rules that produced it.
+    </p>
+    <p class="lede">
+      Its real output is not the verdict. It is the list of things you have
+      <em>assumed but not yet checked</em>.
+    </p>
+
+    <div class="cta-row">
+      <button class="btn btn-primary btn-lg" id="btn-start">Ask the expert</button>
+      <button class="btn btn-ghost btn-lg" id="btn-demo">Load an example</button>
+    </div>
+
+    <p class="hint">
+      Seven short sections, about five minutes. Nothing you enter leaves this device.
+    </p>
+
+    <section class="history hidden" id="history">
+      <h2>Previous assessments</h2>
+      <div class="hist-list" id="hist-list"></div>
+    </section>
+  </div>
+</main>
+
+<!-- ============ ASSESSMENT ============ -->
+<div id="view-assess" class="hidden">
+  <header class="topbar">
+    <div class="topbar-in">
+      <button class="btn btn-ghost btn-sm" id="btn-home">← Home</button>
+      <span class="name">B0SS</span>
+      <span class="step-count" id="step-count">1 / 7</span>
+    </div>
+  </header>
+
+  <main class="wrap assess">
+    <div class="assess-head">
+      <h1>Let's screen this opportunity</h1>
+      <p>
+        Answer what you actually know. Where a question matters and you do not know
+        the answer, say so — B0SS treats "I don't know" as a real answer and will
+        tell you to go and find out rather than guessing on your behalf.
+      </p>
+    </div>
+    <div id="sections"></div>
+  </main>
+</div>
+
+<!-- ============ RESULT ============ -->
+<div id="view-result" class="hidden">
+  <header class="topbar">
+    <div class="topbar-in">
+      <button class="btn btn-ghost btn-sm" id="btn-home-2">← Home</button>
+      <span class="name">B0SS</span>
+      <span class="step-count">Result</span>
+    </div>
+  </header>
+  <main class="wrap result" id="result-body"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="vendor/tau-prolog-core.js"></script>
+<script src="vendor/tau-prolog-lists.js"></script>
+<script src="kb-bundle.js"></script>
+<script src="cases-bundle.js"></script>
+<script src="schema.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

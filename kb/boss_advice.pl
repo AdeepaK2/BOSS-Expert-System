@@ -88,6 +88,6 @@ verdict_text(not_recommended_in_this_form, 'NOT RECOMMENDED IN THIS FORM').
 
 verdict_blurb(proceed, 'Continue to detailed planning. This does not mean the business will succeed.').
 verdict_blurb(proceed_with_caution, 'The core case is positive, but fix the concerns below before or during launch.').
-verdict_blurb(further_validation_required, 'Something critical is unknown. Find it out before deciding - the list below is what to check.').
+verdict_blurb(further_validation_required, 'Something critical is unknown. Find it out before deciding; the list below is what to check.').
 verdict_blurb(not_recommended, 'A blocking condition makes this unacceptable in its current form, whatever else is strong.').
 verdict_blurb(not_recommended_in_this_form, 'Change the scale, model, dependency or timing, then assess again.').
