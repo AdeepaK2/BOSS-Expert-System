@@ -20,7 +20,6 @@
 :- dynamic(price_status/1).
 :- dynamic(owner_experience/1).
 :- dynamic(owner_time/1).
-:- dynamic(experienced_support/1).
 :- dynamic(reversibility/1).
 :- dynamic(startup_cost/1).
 :- dynamic(monthly_cost/1).
@@ -35,7 +34,6 @@
 :- dynamic(competition/1).
 :- dynamic(differentiation/1).
 :- dynamic(dependency/1).
-:- dynamic(channel_fit/1).
 :- dynamic(legal_status/1).
 
 % ------------------------------------------------------------

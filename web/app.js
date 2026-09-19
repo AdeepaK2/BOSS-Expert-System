@@ -152,14 +152,17 @@ function renderSection(sec, i) {
   head.appendChild(el('span', 'sec-num', String(i + 1).padStart(2, '0')));
   const mid = el('div');
   mid.appendChild(el('div', 'sec-title', sec.title));
-  mid.appendChild(el('div', 'sec-sum', isOpen ? sec.blurb : isDone ? summarise(sec) : sec.blurb));
+  const nq = visibleQuestions(sec).length;
+  mid.appendChild(el('div', 'sec-sum',
+    isOpen ? sec.blurb + '  ·  ' + nq + (nq === 1 ? ' question' : ' questions')
+           : isDone ? summarise(sec) : sec.blurb));
   head.appendChild(mid);
   if (isDone && !isOpen) head.appendChild(el('span', 'sec-edit', 'Change'));
   if (isDone || isOpen) head.onclick = () => { state.open = isOpen ? -1 : i; renderSections(); if (!isOpen) scrollToSection(i); };
   node.appendChild(head);
 
   const body = el('div', 'sec-body');
-  visibleQuestions(sec).forEach(q => body.appendChild(renderQuestion(q, i)));
+  visibleQuestions(sec).forEach((q, qi) => body.appendChild(renderQuestion(q, i, qi)));
   if (sec.calc) body.appendChild(renderCalc());
 
   const err = el('p', 'err');
@@ -183,9 +186,12 @@ function renderSection(sec, i) {
   return node;
 }
 
-function renderQuestion(q, secIndex) {
+function renderQuestion(q, secIndex, qIndex) {
   const wrap = el('div', 'q');
-  wrap.appendChild(el('label', 'q-label', q.label));
+  const lab = el('label', 'q-label');
+  lab.appendChild(el('span', 'q-num', (secIndex + 1) + '.' + (qIndex + 1)));
+  lab.appendChild(document.createTextNode(q.label));
+  wrap.appendChild(lab);
   if (q.help) wrap.appendChild(el('p', 'q-help', q.help));
 
   if (q.type === 'choice') {

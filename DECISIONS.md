@@ -105,10 +105,28 @@ changes an answer (FR-10). Rules that both conclude and flag use an
 
 ## Observations for the expert
 
-**6. `channel_fit` is collected but never used.** SRS §4.1 lists it as a
-fact created by screen 6, but none of the 25 rules refer to it. It is
-still collected (and hidden for purely online businesses, per §11), but it
-currently affects nothing. Either a rule is missing, or the fact can go.
+**6. Three facts in §4.1 are read by no rule.** An audit of every session
+fact against the 25 rules and all derived values found that
+`venture_type`, `experienced_support` and `channel_fit` are never read.
+
+- `experienced_support` and `channel_fit` are **no longer collected**. They
+  appear only in §4.1's screen table; no functional requirement names them,
+  and removing them changes no verdict — all six validation cases return
+  identical recommendations, CFs and rule traces without them. This takes
+  the interface from 25 questions to 23.
+- `venture_type` **is still collected**, even though no rule reads it,
+  because FR-01 names it explicitly ("identify whether the case is a new
+  business or an additional branch").
+
+The expert may want to look at `experienced_support` in particular. §3.5
+must-have condition 3 says the owner must be able to do the core work "or
+has a named, committed person who can", and §3.6 Example 4 says a mentor or
+experienced partner compensates for no prior ownership experience — but
+R16 and R17 consider only `owner_experience` and `reversibility`. The rule
+set does not implement what the prose describes. If the expert confirms the
+intent, R17 should read
+`owner_experience(none), ( reversibility(high) ; experienced_support(committed) )`
+and the question comes back.
 
 **7. The session-fact count in §4 understates §4.1.** The table in §4 says
 "approximately 12–18 facts", but the seven screens in §4.1 list 24. This

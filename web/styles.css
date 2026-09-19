@@ -158,6 +158,11 @@ button { font: inherit; cursor: pointer; }
 
 .q + .q { margin-top: 2.2rem; }
 .q-label { display: block; margin-bottom: .1em; }
+.q-num {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: .78rem; color: var(--ink-3);
+  margin-right: .6em; font-variant-numeric: tabular-nums;
+}
 .q-help { font-size: .87rem; color: var(--ink-3); margin: .15em 0 0; max-width: 34em; }
 
 .opts { margin-top: .85rem; }

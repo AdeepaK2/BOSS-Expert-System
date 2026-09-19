@@ -35,7 +35,8 @@ kb/                   the knowledge base — no interface code
 
 web/                  the interface — no business knowledge
   index.html          page shell
-  schema.js           which control creates which Prolog fact (§4.1)
+  schema.js           which control creates which Prolog fact (§4.1);
+                      7 sections, 23 questions
   app.js              rendering, progress, saved assessments
   styles.css
   vendor/             Tau-Prolog core + lists modules

@@ -96,11 +96,6 @@ const SECTIONS = [
           ['sufficient', 'Yes', ''],
           ['insufficient', 'No — only part of them', '']
         ] },
-      { fact: 'experienced_support', label: 'Is there a committed person who has done this work?', type: 'choice',
-        options: [
-          ['committed', 'Yes, a named and committed person', 'Partner, mentor or hired expert'],
-          ['none', 'No', '']
-        ] },
       { fact: 'reversibility', label: 'If this went badly, could you stop cheaply?', type: 'choice',
         help: 'Long leases, hired staff and bought equipment make stopping expensive.',
         options: [
@@ -173,12 +168,6 @@ const SECTIONS = [
         options: [
           ['high', 'Yes', ''],
           ['low', 'No', '']
-        ] },
-      { fact: 'channel_fit', label: 'Does the location or channel suit how customers buy?', type: 'choice',
-        showIf: a => a.channel_type !== 'online',
-        options: [
-          ['good', 'Yes', ''],
-          ['poor', 'Not really', '']
         ] }
     ]
   },
@@ -197,8 +186,10 @@ const SECTIONS = [
   }
 ];
 
-/* channel_fit is collected per SRS 4.1 but is not referenced by any of the
-   25 rules; see DECISIONS.md, observation 6. */
+/* experienced_support and channel_fit were listed by SRS 4.1 but are read by
+   no rule and no derived value, so they are not collected. venture_type is
+   also read by no rule, but FR-01 names it explicitly, so it stays.
+   See DECISIONS.md, observation 6. */
 
 function visibleQuestions(sec, answers) {
   return sec.questions.filter(q => !q.showIf || q.showIf(answers));
