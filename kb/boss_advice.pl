@@ -8,68 +8,68 @@
 
 % ---------- Plain-language reading of each rule ----------
 
-rule_text(r01, 'Repeat customers have already paid at your intended price.').
-rule_text(r02, 'There is observed demand and you know exactly who the customer is.').
-rule_text(r03, 'Nobody has paid yet - interest and encouragement are not demand.').
-rule_text(r04, 'Your price is an assumption that has not been tested against the market.').
-rule_text(r05, 'Strong competitors and nothing specific that makes a customer choose you.').
-rule_text(r06, 'A clear reason to choose you offsets the number of competitors.').
-rule_text(r07, 'Capital covers startup plus six months of running costs, from a safe source.').
-rule_text(r08, 'You have most of the money you need, but not all of it.').
-rule_text(r09, 'You have less than half the money this plan requires.').
-rule_text(r10, 'The funding source can take the household down with the business.').
-rule_text(r11, 'Your margin is below the cost of the money funding the business.').
-rule_text(r12, 'Healthy margin and you collect cash early.').
-rule_text(r13, 'Cash goes out well before it comes back in.').
-rule_text(r14, 'You run out of funded months before you reach break-even.').
-rule_text(r15, 'You have done this work yourself, not just managed it.').
-rule_text(r16, 'No hands-on experience and no cheap way to stop.').
-rule_text(r17, 'No experience yet, but the start is small and reversible.').
-rule_text(r18, 'A walk-in business needs you there during customer hours.').
-rule_text(r19, 'One customer, supplier, person or platform can end the business.').
-rule_text(r20, 'The household runs out of money before the business can pay it.').
-rule_text(r21, 'The business cannot legally operate in this form.').
-rule_text(r22, 'Something critical is still unknown, so no positive answer is possible.').
-rule_text(r23, 'Nothing in this screening argues against detailed planning.').
-rule_text(r24, 'The core case holds, with weaknesses that need explicit mitigation.').
-rule_text(r25, 'Several serious but fixable problems exist in the current plan.').
+rule_text(r01, 'Repeat customers already pay your price.').
+rule_text(r02, 'Observed demand, and you know the customer.').
+rule_text(r03, 'Nobody has paid yet; interest is not demand.').
+rule_text(r04, 'Your price is untested against the market.').
+rule_text(r05, 'Strong competitors, nothing that sets you apart.').
+rule_text(r06, 'A clear edge offsets the competition.').
+rule_text(r07, 'Capital covers startup plus 6 months, from a safe source.').
+rule_text(r08, 'You have most of the money, not all of it.').
+rule_text(r09, 'You have under half the money needed.').
+rule_text(r10, 'The funding could take the household down with it.').
+rule_text(r11, 'Margin is below the cost of the funding.').
+rule_text(r12, 'Healthy margin and early cash.').
+rule_text(r13, 'Cash goes out well before it comes in.').
+rule_text(r14, 'Funded months run out before break-even.').
+rule_text(r15, 'You have done this work yourself.').
+rule_text(r16, 'No hands-on experience, no cheap way to stop.').
+rule_text(r17, 'No experience, but a small, reversible start.').
+rule_text(r18, 'A walk-in business needs you there in customer hours.').
+rule_text(r19, 'One customer, supplier, person or platform can end it.').
+rule_text(r20, 'The household runs out of money before the business pays.').
+rule_text(r21, 'It cannot legally operate in this form.').
+rule_text(r22, 'Something critical is unknown, so no positive answer.').
+rule_text(r23, 'Nothing argues against detailed planning.').
+rule_text(r24, 'The core case holds; weaknesses need mitigation.').
+rule_text(r25, 'Several serious but fixable problems.').
 
 % ---------- A specific next action for every concern ----------
 
-next_action(r03, 'Before spending anything, get one real payment or a signed commitment at your intended price.').
-next_action(r04, 'Ask three likely customers what they pay now, and check two competitors'' actual prices.').
-next_action(r05, 'Write down the one narrow reason a customer would leave a competitor for you. If you cannot, change the offer.').
-next_action(r08, 'Either raise the shortfall before starting, or cut the plan until your capital covers it.').
-next_action(r09, 'Do not start at this scale. Redesign to a version you can fund for six months.').
-next_action(r10, 'Do not fund this with money secured on the home or borrowed at high interest. Change the funding or the scale.').
-next_action(r11, 'Recheck your margin and your interest rate. If the margin is genuinely lower, this plan loses money on every sale.').
-next_action(r13, 'Negotiate deposits or faster payment terms before committing to stock or credit.').
-next_action(r14, 'Reduce monthly costs or raise capital until funded months exceed your break-even estimate.').
-next_action(r16, 'Work in this trade for a season first, or bring in a committed partner who has.').
-next_action(r18, 'Arrange cover for customer hours, or move to a channel that does not need you present.').
-next_action(r19, 'Get the dependency in writing and line up a second option before you launch.').
-next_action(r20, 'Keep at least three months of household costs outside the business, or delay the start.').
-next_action(r21, 'Confirm the licence position with the relevant authority before going further.').
+next_action(r03, 'Get one real payment or signed commitment at your price.').
+next_action(r04, 'Ask 3 likely customers what they pay; check 2 competitors'' prices.').
+next_action(r05, 'Name the one reason a customer would switch to you, or change the offer.').
+next_action(r08, 'Raise the shortfall first, or cut the plan to fit your capital.').
+next_action(r09, 'Redesign to a version you can fund for six months.').
+next_action(r10, 'Change the funding or scale: no home-secured or high-interest money.').
+next_action(r11, 'Recheck margin and interest; if the margin is real, each sale loses money.').
+next_action(r13, 'Negotiate deposits or faster payment before buying stock.').
+next_action(r14, 'Cut monthly costs or raise capital until funded months beat break-even.').
+next_action(r16, 'Work in the trade for a season, or bring in an experienced partner.').
+next_action(r18, 'Arrange cover for customer hours, or change channel.').
+next_action(r19, 'Get the dependency in writing and line up a second option.').
+next_action(r20, 'Keep 3 months of household costs outside the business, or delay.').
+next_action(r21, 'Confirm the licence position with the authority first.').
 
 % ---------- Missing information -> what to go and find out ----------
 
-unknown_label(demand,  'Whether anyone will actually pay has not been tested.').
-unknown_label(price,   'The selling price has not been validated.').
-unknown_label(capital, 'How much capital you actually have is not known.').
-unknown_label(legal,   'The licensing position is not known.').
+unknown_label(demand,  'Whether anyone will pay is untested.').
+unknown_label(price,   'The selling price is unvalidated.').
+unknown_label(capital, 'Your actual capital is not known.').
+unknown_label(legal,   'The licensing position is unknown.').
 
-unknown_action(demand,  'Test whether anyone will pay: take one deposit, pre-order or paid trial.').
-unknown_action(price,   'Validate the selling price against real competitor prices and real customer responses.').
-unknown_action(capital, 'Work out your actual startup cost and monthly running cost before deciding anything else.').
-unknown_action(legal,   'Find out exactly which licences or approvals this business needs, and whether you can get them.').
+unknown_action(demand,  'Take one deposit, pre-order or paid trial.').
+unknown_action(price,   'Check the price against real competitors and customers.').
+unknown_action(capital, 'Work out startup and monthly running costs.').
+unknown_action(legal,   'Find out which licences are needed, and if you can get them.').
 
 % SRS section 6 "validation gap": critical items that are assumed rather
 % than known. These are the heart of what B0SS is for.
-gap_label(test_demand,    'Demand has not been tested with money.').
-gap_label(validate_price, 'The selling price has not been validated.').
+gap_label(test_demand,    'Demand is untested with money.').
+gap_label(validate_price, 'The selling price is unvalidated.').
 
-gap_action(test_demand,    'Take one deposit, pre-order or paid trial before committing money.').
-gap_action(validate_price, 'Check your price against two real competitor prices and three likely customers.').
+gap_action(test_demand,    'Take one deposit, pre-order or paid trial.').
+gap_action(validate_price, 'Check the price against 2 competitors and 3 likely customers.').
 
 % ---------- CF labels, SRS section 8 ----------
 
@@ -129,13 +129,13 @@ conclusion_tone(risk, high, bad).         conclusion_tone(risk, critical, bad).
 
 % ---------- The SRS 9.1 decision ladder, in plain words ----------
 
-gate_label(scope,        'Is this a business B0SS can screen?').
-gate_label(override,     'Any absolute deal-breaker?').
-gate_label(unknowns,     'Is anything critical still unknown?').
-gate_label(proceed,      'Is the core case clean?').
-gate_label(caution,      'Is the core case sound with fixable weaknesses?').
-gate_label(in_this_form, 'Are there two or more serious risks?').
-gate_label(insufficient, 'Not enough to answer either way.').
+gate_label(scope,        'Can B0SS screen it?').
+gate_label(override,     'Any deal-breaker?').
+gate_label(unknowns,     'Anything critical unknown?').
+gate_label(proceed,      'Core case clean?').
+gate_label(caution,      'Sound, with fixable weaknesses?').
+gate_label(in_this_form, '2+ serious risks?').
+gate_label(insufficient, 'Not enough to decide.').
 
 gate_detail(override,     'Dangerous funding, margin below funding cost, or a legal blocker.').
 gate_detail(unknowns,     'Demand, price, capital or licensing.').

@@ -79,7 +79,7 @@ const path = require('path');
   await page.click('.hist-item');
   await page.waitForSelector('#view-result:not(.hidden)', { timeout: 8000 });
   await page.waitForTimeout(300);
-  await page.locator('#result-body .result-actions button', { hasText: 'Change an answer' }).click();
+  await page.locator('#result-side .result-actions button', { hasText: 'Change an answer' }).click();
   await page.waitForTimeout(250);
   await page.locator('.dot').last().click();                        // jump to the legal question
   await page.waitForTimeout(250);

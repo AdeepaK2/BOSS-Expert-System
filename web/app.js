@@ -544,10 +544,8 @@ function renderResult() {
   const v = el('div', 'verdict ' + (TONE[r.rec] || ''));
   if (!outOfScope) v.appendChild(el('div', 'verdict-cf', r.cfLabel));
   const h = el('h1'); h.textContent = r.title;
-  if (!outOfScope) {
-    h.appendChild(el('span', 'cf-num', '\u00A0\u00A0(' + (r.cf > 0 ? '+' : '') + r.cf.toFixed(1) + ')'));
-  }
   v.appendChild(h);
+  if (!outOfScope) v.appendChild(cfScale(r.cf));
   v.appendChild(el('p', null, r.blurb));
   side.appendChild(v);
 
@@ -566,11 +564,7 @@ function renderResult() {
       'owner-trade businesses. Anything needing specialist regulatory or technical judgement — ' +
       'pharmacy, finance, insurance, alcohol, firearms, franchises, construction, agriculture — ' +
       'is out of scope. (SRS \u00A72)'));
-    const acts = el('div', 'result-actions');
-    const again = el('button', 'btn', 'Screen a different business');
-    again.onclick = () => startNew();
-    acts.appendChild(again);
-    host.appendChild(acts);
+    side.appendChild(resultFoot(false));
     return;
   }
 
@@ -592,6 +586,8 @@ function renderResult() {
   }
 
   // How the answer was reached: the SRS 9.1 ladder with the route taken.
+  // Built here, placed after the findings: what to do comes before why.
+  let flowBlock = null;
   if (r.path.length) {
     const b = block('How this was decided');
     const flow = el('div', 'flow');
@@ -609,16 +605,21 @@ function renderResult() {
       rail.appendChild(el('div', 'gate-node'));
       row.appendChild(rail);
 
+      // One line per gate: the question, then the answer given. The longer
+      // explanation of a gate is a tooltip rather than more text on the page.
       const body = el('div', 'gate-body');
-      body.appendChild(el('div', 'gate-q', r.gateLabel[g] || g));
-      if (r.gateDetail[g]) body.appendChild(el('div', 'gate-d', r.gateDetail[g]));
+      const line = el('div', 'gate-line');
+      const q = el('div', 'gate-q', r.gateLabel[g] || g);
+      if (r.gateDetail[g]) q.title = r.gateDetail[g];
+      line.appendChild(q);
+      body.appendChild(line);
 
       if (d) {
         const ans = el('div', 'gate-ans');
         ans.textContent = isExit
           ? 'Yes → ' + (VERDICT_SHORT[r.gateOutcome[g]] || r.gateOutcome[g])
-          : (g === 'scope' ? 'Yes, carry on' : 'No, carry on');
-        body.appendChild(ans);
+          : (g === 'scope' ? 'Yes' : 'No');
+        line.appendChild(ans);
         const why = gateWhy(g, d, r);
         if (why) body.appendChild(el('div', 'gate-why', why));
       }
@@ -631,16 +632,16 @@ function renderResult() {
       const rail = el('div', 'gate-rail'); rail.appendChild(el('div', 'gate-node'));
       row.appendChild(rail);
       const body = el('div', 'gate-body');
-      body.appendChild(el('div', 'gate-q', r.gateLabel.insufficient));
-      const ans = el('div', 'gate-ans');
-      ans.textContent = '→ ' + (VERDICT_SHORT.further_validation_required || '');
-      body.appendChild(ans);
+      const line = el('div', 'gate-line');
+      line.appendChild(el('div', 'gate-q', r.gateLabel.insufficient));
+      line.appendChild(el('div', 'gate-ans', '→ ' + (VERDICT_SHORT.further_validation_required || '')));
+      body.appendChild(line);
       row.appendChild(body);
       flow.appendChild(row);
     }
 
     b.appendChild(flow);
-    host.appendChild(b);
+    flowBlock = b;
   }
 
   // One consolidated action list - the most useful thing on the page.
@@ -667,43 +668,49 @@ function renderResult() {
     host.appendChild(b);
   }
 
-  if (r.positives.length) {
-    const b = block('In its favour');
-    for (const p of r.positives) {
-      const [id, concl, cf] = p.args;
-      b.appendChild(finding('pos', '+', r.ruleText[id] || conclusionText(concl), null, id, cf));
+  // In its favour and Concerns sit side by side when the pane is wide enough.
+  if (r.positives.length || r.concerns.length) {
+    const cols = el('div', 'cols');
+    if (r.positives.length) {
+      const b = block('In its favour');
+      for (const p of r.positives) {
+        const [id, concl, cf] = p.args;
+        b.appendChild(finding('pos', '+', r.ruleText[id] || conclusionText(concl), null, id, cf));
+      }
+      cols.appendChild(b);
     }
-    host.appendChild(b);
-  }
-
-  if (r.concerns.length) {
-    const b = block('Concerns');
-    for (const c of r.concerns) {
-      const [id, concl, cf] = c.args;
-      b.appendChild(finding('neg', '−', r.ruleText[id] || conclusionText(concl), null, id, cf));
+    if (r.concerns.length) {
+      const b = block('Concerns');
+      for (const c of r.concerns) {
+        const [id, concl, cf] = c.args;
+        b.appendChild(finding('neg', '−', r.ruleText[id] || conclusionText(concl), null, id, cf));
+      }
+      cols.appendChild(b);
     }
-    host.appendChild(b);
+    host.appendChild(cols);
   }
 
   // Visible arithmetic - SRS section 10.
   if (typeof r.money.req === 'number') {
     const b = block('The money');
     const t = el('div', 'money-table');
-    t.appendChild(moneyRow('Capital requirement', 'Startup cost + six months of running costs',
+    t.appendChild(moneyRow('Capital needed', 'Startup + 6 months of running costs',
       'LKR ' + fmt(r.money.req)));
     if (typeof r.money.funded === 'number')
-      t.appendChild(moneyRow('Months you are funded for', 'Capital left after opening ÷ monthly cost',
+      t.appendChild(moneyRow('Months funded', 'Capital left after opening ÷ monthly cost',
         fmt1(r.money.funded) + ' months'));
     if (typeof r.money.gap === 'number')
-      t.appendChild(moneyRow('Survival gap', 'Funded months − months to break even',
+      t.appendChild(moneyRow('Survival gap', 'Months funded − months to break even',
         (r.money.gap >= 0 ? '+' : '') + fmt1(r.money.gap) + ' months'));
     b.appendChild(t);
     host.appendChild(b);
   }
 
+  if (flowBlock) host.appendChild(flowBlock);
+
   // FR-09: show reasoning.
   const det = el('details', 'reasoning');
-  const sum = el('summary', null, 'Show reasoning · ' + r.trace.length + ' rules fired');
+  const sum = el('summary', null, 'Reasoning · ' + r.trace.length + (r.trace.length === 1 ? ' rule' : ' rules'));
   det.appendChild(sum);
   const tr = el('div', 'trace');
   for (const f of r.trace) {
@@ -719,29 +726,79 @@ function renderResult() {
   host.appendChild(det);
 
   host.appendChild(el('div', 'disclaimer',
-    'B0SS applies one advisor\u2019s screening rules to what you entered. It does not analyse market ' +
-    'data, predict success, or give legal, tax or financial advice. A PROCEED means only that these ' +
-    'rules found no reason to stop.'));
+    'One advisor\u2019s screening rules applied to your answers. Not market analysis, a prediction, ' +
+    'or legal, tax or financial advice.'));
 
-  const save = el('div', 'save-row');
-  const nameIn = el('input');
-  nameIn.type = 'text';
-  nameIn.placeholder = 'Name this assessment, e.g. "Tuition class, Gampaha"';
-  nameIn.value = state.editing ? state.editing.name : '';
-  const saveBtn = el('button', 'btn btn-primary', state.editing ? 'Update saved' : 'Save this assessment');
-  saveBtn.onclick = () => saveAssessment(nameIn.value.trim());
-  save.appendChild(nameIn); save.appendChild(saveBtn);
-  host.appendChild(save);
+  side.appendChild(resultFoot(true));
+}
 
+/* The left pane's foot: save under a name, and the ways to leave this screen. */
+function resultFoot(canSave) {
+  const foot = el('div', 'res-foot');
+
+  if (canSave) {
+    const form = el('form', 'save-row');
+    const nameIn = el('input');
+    nameIn.type = 'text';
+    nameIn.placeholder = 'Name it, e.g. Tuition class';
+    nameIn.setAttribute('aria-label', 'Name this assessment');
+    nameIn.value = state.editing ? state.editing.name : '';
+    const saveBtn = el('button', 'btn btn-primary', state.editing ? 'Update' : 'Save');
+    saveBtn.type = 'submit';
+    form.onsubmit = e => { e.preventDefault(); saveAssessment(nameIn.value.trim()); };
+    form.appendChild(nameIn); form.appendChild(saveBtn);
+    foot.appendChild(form);
+  }
+
+  // Two across, then the one that starts over full width beneath them.
   const acts = el('div', 'result-actions');
-  const edit = el('button', 'btn', 'Change an answer');
-  edit.onclick = () => { state.step = 0; state.furthest = steps().length; renderStep(); show('assess'); };
-  const again = el('button', 'btn', 'Screen another business');
-  again.onclick = () => startNew();
-  const print = el('button', 'btn btn-ghost', 'Print / save as PDF');
-  print.onclick = () => window.print();
-  acts.appendChild(edit); acts.appendChild(again); acts.appendChild(print);
-  host.appendChild(acts);
+  const add = (text, fn) => {
+    const b = el('button', 'btn', text);
+    b.onclick = fn;
+    acts.appendChild(b);
+  };
+  if (canSave) {
+    add('Change an answer', () => {
+      state.step = 0; state.furthest = steps().length; renderStep(); show('assess');
+    });
+    add('Print / PDF', () => window.print());
+  }
+  add(canSave ? 'Screen another business' : 'Screen a different business', () => startNew());
+  foot.appendChild(acts);
+  return foot;
+}
+
+/* The certainty factor as a number and as a position on the -1..+1 line,
+   filled from 0 towards the value so its sign and size read at a glance. */
+function cfScale(cf) {
+  const at = Math.max(-1, Math.min(1, cf));
+  const pct = (at + 1) * 50;
+  const wrap = el('div', 'cf');
+
+  const head = el('div', 'cf-head');
+  head.appendChild(document.createTextNode('CF: '));
+  head.appendChild(el('b', null, (cf > 0 ? '+' : '') + cf.toFixed(1)));
+  wrap.appendChild(head);
+
+  const row = el('div', 'cf-row');
+  row.appendChild(el('span', 'cf-end', '\u22121'));
+  const line = el('div', 'cf-line');
+  const fill = el('i', 'cf-fill');
+  fill.style.left = Math.min(50, pct) + '%';
+  fill.style.width = Math.abs(pct - 50) + '%';
+  line.appendChild(fill);
+  for (const t of [0, 25, 50, 75, 100]) {
+    const tick = el('i', 'cf-tick' + (t === 50 ? ' mid' : ''));
+    tick.style.left = t + '%';
+    line.appendChild(tick);
+  }
+  const dot = el('i', 'cf-dot');
+  dot.style.left = pct + '%';
+  line.appendChild(dot);
+  row.appendChild(line);
+  row.appendChild(el('span', 'cf-end', '+1'));
+  wrap.appendChild(row);
+  return wrap;
 }
 
 function block(title, sub) {
@@ -774,11 +831,9 @@ function finding(tone, mark, text, action, ruleId, cf) {
 
 function moneyRow(label, sub, value) {
   const row = el('div', 'money-row');
-  const l = el('div');
-  l.appendChild(document.createTextNode(label));
-  l.appendChild(el('small', null, sub));
-  row.appendChild(l);
+  row.appendChild(el('span', 'money-k', label));
   row.appendChild(el('b', null, value));
+  row.appendChild(el('small', null, sub));
   return row;
 }
 
