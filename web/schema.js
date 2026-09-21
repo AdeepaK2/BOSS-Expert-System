@@ -33,7 +33,7 @@ const SECTIONS = [
     title: 'Business profile',
     blurb: 'What kind of business, and what shape it is in.',
     questions: [{
-      label: 'Tell us about the business',
+      label: 'The business',
       controls: [
         { id: 'business_type', fact: 'business_type', label: 'What kind of business is it?',
           options: [
@@ -55,17 +55,17 @@ const SECTIONS = [
         // channel question rather than costing a question of its own.
         { id: 'channel', label: 'How do customers reach you?',
           options: [
-            ['walkin_new',    'They come to a physical place', 'My first location',
+            ['walkin_new',    'A physical place — my first location', 'Shop, salon, outlet',
               { channel_type: 'walk_in', venture_type: 'new' }],
-            ['walkin_branch', 'They come to a physical place', 'An additional branch',
+            ['walkin_branch', 'A physical place — an additional branch', '',
               { channel_type: 'walk_in', venture_type: 'branch' }],
-            ['online_new',    'Entirely online', 'My first',
+            ['online_new',    'Entirely online — my first', '',
               { channel_type: 'online', venture_type: 'new' }],
-            ['online_branch', 'Entirely online', 'Alongside an existing business',
+            ['online_branch', 'Entirely online — alongside an existing business', '',
               { channel_type: 'online', venture_type: 'branch' }],
-            ['hybrid_new',    'Both physical and online', 'My first location',
+            ['hybrid_new',    'Both — my first location', '',
               { channel_type: 'hybrid', venture_type: 'new' }],
-            ['hybrid_branch', 'Both physical and online', 'An additional branch',
+            ['hybrid_branch', 'Both — an additional branch', '',
               { channel_type: 'hybrid', venture_type: 'branch' }]
           ] }
       ]
@@ -76,7 +76,7 @@ const SECTIONS = [
     title: 'Demand and price',
     blurb: 'The one factor with no substitute: will somebody actually pay.',
     questions: [{
-      label: 'Evidence that someone will pay',
+      label: 'Demand and price',
       controls: [
         // R01 (validated + recurring), R02 (observed/validated + specific)
         // and R03 (none/anecdotal) read these three together.
@@ -125,7 +125,7 @@ const SECTIONS = [
     title: 'Owner readiness',
     blurb: 'In a small business the owner is the quality control, the sales team and the cost controller.',
     questions: [{
-      label: 'Your own experience',
+      label: 'Owner readiness',
       controls: [
         // R15 (direct), R16 (none + low) and R17 (none + high) read these
         // two together; reversibility matters only when experience is none,
@@ -161,7 +161,7 @@ const SECTIONS = [
     blurb: 'Startup cost alone is a misleading number. What matters is six months of running costs too.',
     questions: [
       {
-        label: 'What it costs, and what you have',
+        label: 'Costs and capital',
         calc: true,
         controls: [
           { id: 'startup_cost', fact: 'startup_cost', type: 'number', prefix: 'LKR',
@@ -179,7 +179,7 @@ const SECTIONS = [
         ]
       },
       {
-        label: 'Where the money comes from',
+        label: 'Funding',
         controls: [
           // Rate bands remove a separate numeric question. Each band sets
           // stated_rate to its LOWER bound, so R11 (margin below funding
@@ -214,7 +214,7 @@ const SECTIONS = [
     blurb: 'More small businesses die from the owner running out of household money than from a competitor.',
     questions: [
       {
-        label: 'How long you have',
+        label: 'Time and runway',
         controls: [
           { id: 'breakeven_months', fact: 'breakeven_months', type: 'number', suffix: 'months',
             label: 'Months until the business covers its own costs' },
@@ -224,9 +224,10 @@ const SECTIONS = [
         ]
       },
       {
-        label: 'When the money actually reaches you',
+        label: 'Cash cycle',
         controls: [
           { id: 'cash_cycle', fact: 'cash_cycle',
+            label: 'When does a customer\u2019s money actually reach you?',
             options: [
               ['advance_payment', 'Before I deliver', 'Fees or deposits paid in advance'],
               ['on_delivery', 'At the time I deliver'],
@@ -242,7 +243,7 @@ const SECTIONS = [
     title: 'Competition and operations',
     blurb: 'In small local markets, competition is rarely about being better overall.',
     questions: [{
-      label: 'Who else is doing this, and what could break',
+      label: 'Competition and risk',
       controls: [
         // R05 and R06 read competition and differentiation together.
         { id: 'market', label: 'Who else does this, and why would a customer choose you?',
@@ -282,9 +283,10 @@ const SECTIONS = [
     title: 'Legal and licensing',
     blurb: 'A legal blocker is binary. Everything else is a matter of degree.',
     questions: [{
-      label: 'Licensing position',
+      label: 'Legal and licensing',
       controls: [
         { id: 'legal_status', fact: 'legal_status',
+          label: 'What licences or approvals does this business need?',
           options: [
             ['none_required', 'Nothing special is required'],
             ['routine', 'Routine registration I can obtain'],

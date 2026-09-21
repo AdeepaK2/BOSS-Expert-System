@@ -147,7 +147,8 @@ function toast(msg) {
 
 function show(view) {
   for (const v of ['landing', 'assess', 'result']) $('#view-' + v).classList.toggle('hidden', v !== view);
-  window.scrollTo(0, 0);
+  document.querySelectorAll('#view-' + view + ' .scroll, #view-' + view + ' .panes')
+          .forEach(n => { n.scrollTop = 0; });
 }
 
 /* ---------- 4. Assessment: one question per screen ---------- */
@@ -178,39 +179,51 @@ function renderStep(dir) {
   if (q.help) node.appendChild(el('p', 'q-help', q.help));
 
   const cs = controlsOf(q);
-  cs.forEach(c => node.appendChild(renderControl(c, cs.length > 1)));
+  cs.forEach((c, i) => {
+    const box = renderControl(c, (state.step + 1) + '.' + (i + 1));
+    box.dataset.ctrl = c.id;
+    node.appendChild(box);
+  });
   if (q.calc) node.appendChild(renderCalc());
 
-  const err = el('p', 'err');
-  err.id = 'err';
-  err.textContent = 'Please answer before continuing.';
-  node.appendChild(err);
-
-  const foot = el('div', 'step-foot');
-  if (state.step > 0) {
-    const back = el('button', 'btn', '← Back');
-    back.onclick = goBack;
-    foot.appendChild(back);
-  }
-  foot.appendChild(el('span', 'of', (state.step + 1) + ' of ' + all.length));
-  foot.appendChild(el('span', 'spacer'));
-  const last = state.step === all.length - 1;
-  const next = el('button', 'btn btn-primary', last ? 'See result' : 'Continue');
-  next.onclick = goNext;
-  foot.appendChild(next);
-  node.appendChild(foot);
-
   host.appendChild(node);
+  renderFoot(all);
   renderDots();
   renderRail();
   updateCalc();
-  if (dir !== 'none') window.scrollTo({ top: 0, behavior: 'auto' });
+  if (dir !== 'none') host.scrollTop = 0;
+  requestAnimationFrame(updateMore);
 }
 
-function renderControl(c, showLabel) {
+function renderFoot(all) {
+  const foot = $('#step-foot');
+  foot.innerHTML = '';
+  const inner = el('div', 'step-foot-in');
+
+  if (state.step > 0) {
+    const back = el('button', 'btn', '← Back');
+    back.onclick = goBack;
+    inner.appendChild(back);
+  }
+  const of = el('span', 'of');
+  of.id = 'foot-msg';
+  of.textContent = (state.step + 1) + ' of ' + all.length;
+  inner.appendChild(of);
+  inner.appendChild(el('span', 'spacer'));
+
+  const last = state.step === all.length - 1;
+  const next = el('button', 'btn btn-primary', last ? 'See result' : 'Continue');
+  next.onclick = goNext;
+  inner.appendChild(next);
+  foot.appendChild(inner);
+}
+
+function renderControl(c, num) {
   const box = el('div', 'ctrl');
-  // With one control per question the question heading already says it.
-  if (showLabel && c.label) box.appendChild(el('label', 'ctrl-label', c.label));
+  const head = el('div', 'ctrl-head');
+  head.appendChild(el('span', 'ctrl-num', num));
+  head.appendChild(el('label', 'ctrl-label', c.label || ''));
+  box.appendChild(head);
   if (c.help) box.appendChild(el('p', 'q-help', c.help));
 
   if (c.type === 'number') {
@@ -224,11 +237,20 @@ function renderControl(c, showLabel) {
     input.oninput = () => {
       const v = input.value.trim();
       state.answers[c.id] = v === '' ? undefined : Number(v);
+      if (v !== '') clearMissing();
       updateCalc();
+    };
+    input.onchange = () => { if (answered(c)) advanceWithin(c.id, true); };
+    input.onkeydown = e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (answered(c)) advanceWithin(c.id, true);
     };
     row.appendChild(input);
     if (c.suffix) row.appendChild(el('span', 'num-suf', c.suffix));
-    box.appendChild(row);
+    const wrapN = el('div', 'answers');
+    wrapN.appendChild(row);
+    box.appendChild(wrapN);
 
     if (c.unknownFact) {
       const l = el('label', 'opt');
@@ -242,7 +264,7 @@ function renderControl(c, showLabel) {
       l.appendChild(cb);
       const t = el('div', 'opt-txt'); t.appendChild(el('b', null, c.unknownLabel));
       l.appendChild(t);
-      box.appendChild(l);
+      box.querySelector('.answers').appendChild(l);
     }
     return box;
   }
@@ -257,9 +279,10 @@ function renderControl(c, showLabel) {
     input.onchange = () => {
       const before = controlsOf(currentQ()).map(x => x.id).join();
       state.answers[c.id] = val;
-      document.getElementById('err')?.classList.remove('show');
+      clearMissing();
       // Some answers change which controls apply (e.g. funding source).
-      if (controlsOf(currentQ()).map(x => x.id).join() !== before) renderStep('none');
+      if (controlsOf(currentQ()).map(x => x.id).join() !== before) { renderStep('none'); return; }
+      advanceWithin(c.id, true);
     };
     l.appendChild(input);
     const txt = el('div', 'opt-txt');
@@ -268,7 +291,9 @@ function renderControl(c, showLabel) {
     l.appendChild(txt);
     opts.appendChild(l);
   }
-  box.appendChild(opts);
+  const wrapA = el('div', 'answers');
+  wrapA.appendChild(opts);
+  box.appendChild(wrapA);
   return box;
 }
 
@@ -299,21 +324,111 @@ function updateCalc() {
   box.innerHTML = html;
 }
 
+function answered(c) {
+  if (c.unknownFact && state.answers[c.unknownFact] === 'unknown') return true;
+  const v = state.answers[c.id];
+  return v !== undefined && v !== null && v !== '' && !(typeof v === 'number' && isNaN(v));
+}
+
 function stepComplete(i) {
   const all = steps();
   if (i >= all.length) return true;
-  return controlsOf(all[i].q).every(c => {
-    if (c.unknownFact && state.answers[c.unknownFact] === 'unknown') return true;
-    const v = state.answers[c.id];
-    return v !== undefined && v !== null && v !== '' && !(typeof v === 'number' && isNaN(v));
-  });
+  return controlsOf(all[i].q).every(answered);
+}
+
+function firstUnanswered(i) {
+  const all = steps();
+  if (i >= all.length) return null;
+  return controlsOf(all[i].q).find(c => !answered(c)) || null;
+}
+
+/* The unanswered control may be well below the fold, so say what is
+   missing in the always-visible footer and scroll to it. */
+function flagMissing(c) {
+  const msg = $('#foot-msg');
+  if (msg) {
+    msg.textContent = 'Answer “' + (c.label || currentQ().label) + '” to continue';
+    msg.classList.add('bad');
+  }
+  const box = document.querySelector('[data-ctrl="' + c.id + '"]');
+  if (!box) return;
+  document.querySelectorAll('.ctrl.invalid').forEach(n => n.classList.remove('invalid'));
+  box.classList.add('invalid');
+  scrollControlIntoView(box, 'center');
+  const field = box.querySelector('input');
+  if (field && field.type !== 'radio') field.focus({ preventScroll: true });
+}
+
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Show or hide the "there is more below" fade. */
+function updateMore() {
+  const wrap = $('#stage-body'), sc = $('#step-host'), bar = $('#stage-bar');
+  if (!wrap || !sc) return;
+  const hidden = sc.scrollHeight - sc.clientHeight;
+  wrap.classList.toggle('overflows', hidden > 2);
+  wrap.classList.toggle('more', hidden - sc.scrollTop > 6);
+  if (bar && hidden > 2) {
+    const track = bar.clientHeight;
+    const thumb = bar.firstElementChild;
+    const h = Math.max(26, Math.round(track * sc.clientHeight / sc.scrollHeight));
+    thumb.style.height = h + 'px';
+    thumb.style.top = Math.round((track - h) * (sc.scrollTop / hidden)) + 'px';
+  }
+}
+
+function scrollControlIntoView(box, block) {
+  const sc = $('#step-host');
+  if (!sc || !box) return;
+  const br = box.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+  const pad = block === 'center' ? (sr.height - br.height) / 2 : 22;
+  sc.scrollTo({ top: sc.scrollTop + (br.top - sr.top) - Math.max(16, pad),
+                behavior: REDUCED ? 'auto' : 'smooth' });
+}
+
+/* After answering one sub-question, move to the next unanswered one so the
+   user never has to discover it by pressing Continue. */
+function advanceWithin(afterId, moveFocus) {
+  const cs = controlsOf(currentQ());
+  const i = cs.findIndex(c => c.id === afterId);
+  if (i < 0) return;
+  const next = cs.slice(i + 1).find(c => !answered(c));
+  if (!next) { updateMore(); return; }
+  const box = document.querySelector('[data-ctrl="' + next.id + '"]');
+  if (!box) return;
+
+  const sc = $('#step-host');
+  const br = box.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+  const onScreen = br.top >= sr.top && br.top < sr.bottom - 80;
+
+  if (!onScreen) {
+    scrollControlIntoView(box);
+    box.classList.remove('landed');
+    void box.offsetWidth;
+    box.classList.add('landed');
+  }
+
+  // Typing a number and pressing Enter should behave like Tab, whether or
+  // not the next field needed scrolling into view.
+  const field = box.querySelector('input[type="number"]');
+  if (field && moveFocus) {
+    const go = () => field.focus({ preventScroll: true });
+    if (onScreen || REDUCED) go(); else setTimeout(go, 320);
+  }
+  setTimeout(updateMore, REDUCED ? 0 : 420);
+}
+
+function clearMissing() {
+  const all = steps();
+  const msg = $('#foot-msg');
+  if (msg) { msg.textContent = (state.step + 1) + ' of ' + all.length; msg.classList.remove('bad'); }
+  document.querySelectorAll('.ctrl.invalid').forEach(n => n.classList.remove('invalid'));
 }
 
 function goNext() {
-  if (!stepComplete(state.step)) {
-    document.getElementById('err')?.classList.add('show');
-    return;
-  }
+  const missing = firstUnanswered(state.step);
+  if (missing) { flagMissing(missing); return; }
+  clearMissing();
   state.furthest = Math.max(state.furthest, state.step + 1);
   state.step++;
   renderStep();
@@ -473,7 +588,7 @@ function renderResult() {
       grid.appendChild(cell);
     }
     b.appendChild(grid);
-    host.appendChild(b);
+    side.appendChild(b);
   }
 
   // How the answer was reached: the SRS 9.1 ladder with the route taken.
@@ -771,6 +886,9 @@ $('#btn-home').onclick = () => { renderHistory(); show('landing'); };
 $('#btn-home-2').onclick = () => { renderHistory(); show('landing'); };
 
 renderHistory();
+
+$('#step-host').addEventListener('scroll', updateMore, { passive: true });
+window.addEventListener('resize', updateMore);
 
 document.addEventListener('keydown', e => {
   if ($('#view-assess').classList.contains('hidden')) return;

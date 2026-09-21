@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>B0SS — Business Opportunity Screening</title>
 <meta name="description" content="A rule-based expert system that screens a proposed small business and shows exactly which assumptions are still untested.">
 <meta name="theme-color" content="#123E63">
@@ -13,38 +13,44 @@
 <body>
 
 <!-- ============ LANDING ============ -->
-<main id="view-landing" class="wrap landing">
-  <div class="landing-in">
-    <img class="logo" src="public/logo.png" width="560" height="416"
-         alt="B0SS Project — Business Opportunity Screening System">
-    <div class="landing-copy">
-    <h1>Screen a business opportunity</h1>
-    <p class="tagline">A rule-based expert system</p>
+<div id="view-landing" class="view">
+  <div class="panes solo">
+    <div class="pane scroll">
+      <main class="wrap landing">
+        <div class="landing-in">
+          <img class="logo" src="public/logo.png" width="560" height="416"
+               alt="B0SS Project — Business Opportunity Screening System">
+          <div class="landing-copy">
+            <h1>Screen a business opportunity</h1>
+            <p class="tagline">A rule-based expert system</p>
 
-    <p class="lede">
-      Nine questions about a proposed small business. You get a recommendation,
-      and — more usefully — <em>the list of things you have assumed but not checked</em>.
-    </p>
+            <p class="lede">
+              Nine questions about a proposed small business. You get a recommendation,
+              and — more usefully — <em>the list of things you have assumed but not checked</em>.
+            </p>
 
-    <div class="cta-row">
-      <button class="btn btn-primary btn-lg" id="btn-start">Start screening</button>
+            <div class="cta-row">
+              <button class="btn btn-primary btn-lg" id="btn-start">Start screening</button>
+            </div>
+
+            <p class="hint">
+              Nine questions, about three minutes. Nothing leaves this device.<br>
+              <button class="linkish" id="btn-demo">Load a worked example instead</button>
+            </p>
+          </div>
+
+          <section class="history hidden" id="history">
+            <h2>Previous assessments</h2>
+            <div class="hist-list" id="hist-list"></div>
+          </section>
+        </div>
+      </main>
     </div>
-
-    <p class="hint">
-      Nine questions, about three minutes. Nothing leaves this device.<br>
-      <button class="linkish" id="btn-demo">Load a worked example instead</button>
-    </p>
-    </div>
-
-    <section class="history hidden" id="history">
-      <h2>Previous assessments</h2>
-      <div class="hist-list" id="hist-list"></div>
-    </section>
   </div>
-</main>
+</div>
 
 <!-- ============ ASSESSMENT ============ -->
-<div id="view-assess" class="hidden">
+<div id="view-assess" class="view hidden">
   <header class="topbar">
     <div class="topbar-in">
       <button class="btn btn-ghost btn-sm" id="btn-home">← Home</button>
@@ -53,14 +59,21 @@
     </div>
     <div class="dots" id="dots"></div>
   </header>
-  <main class="wrap assess">
-    <nav class="rail" id="rail" aria-label="Questions"></nav>
-    <div class="stage" id="step-host"></div>
-  </main>
+
+  <div class="panes assess">
+    <nav class="pane scroll rail" id="rail" aria-label="Questions"></nav>
+    <section class="pane stage">
+      <div class="stage-body" id="stage-body">
+        <div class="scroll" id="step-host"></div>
+        <div class="scrollbar" id="stage-bar" aria-hidden="true"><div class="thumb"></div></div>
+      </div>
+      <footer class="step-foot" id="step-foot"></footer>
+    </section>
+  </div>
 </div>
 
 <!-- ============ RESULT ============ -->
-<div id="view-result" class="hidden">
+<div id="view-result" class="view hidden">
   <header class="topbar">
     <div class="topbar-in">
       <button class="btn btn-ghost btn-sm" id="btn-home-2">← Home</button>
@@ -68,10 +81,11 @@
       <span class="step-count">Result</span>
     </div>
   </header>
-  <main class="wrap result">
-    <aside class="res-side" id="result-side"></aside>
-    <div class="res-main" id="result-body"></div>
-  </main>
+
+  <div class="panes result">
+    <aside class="pane scroll res-side" id="result-side"></aside>
+    <div class="pane scroll res-main" id="result-body"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>

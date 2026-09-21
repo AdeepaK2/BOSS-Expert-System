@@ -318,12 +318,57 @@ wording, so it is editable without touching the interface (FR-11).
 
 ## Decision 17 — One question per screen, and a visible decision path
 
-**Scrolling.** The Back / Continue bar is `position: sticky; bottom: 0`
-with a gradient fade above it, so the action is always in view and content
-visibly continues underneath. The step position ("4 of 9") sits beside the
-buttons as well as in the dot strip. Verified at 390×780: on all nine
-questions, including the two whose content runs past 1200px, Continue is
-reachable without scrolling.
+**Application frame.** The page itself does not scroll. Each view fills the
+viewport (`100dvh`) as a fixed frame: header, then panes that scroll
+independently, then the action bar. On desktop the question rail and the
+question are two separate scrolling frames; on the result, the verdict and
+scorecard are one frame and the detail another. Below 940px the panes stack
+into a single scroller. The action bar sits outside the scroller entirely,
+so it is always on screen rather than merely sticky.
+
+**Numbered sub-questions.** A question may hold several controls, so each
+is numbered `N.M` — 4.1 cost to open, 4.2 cost to run, 4.3 capital in
+hand, 4.4 gross margin — with its answers grouped beneath it behind a
+hairline. The number and the rule make it unambiguous which answers belong
+to which sub-question, and how many there are.
+
+**Being carried to the next sub-question.** Answering a control now moves
+to the next unanswered one in the same question: it is scrolled into view
+and briefly highlighted, and for a numeric field Enter moves focus like
+Tab. A user should not have to discover a sub-question by pressing
+Continue and being refused.
+
+**Knowing that there is more.** Native scrollbars are overlays on macOS and
+absent on touch — they appear while scrolling, which is exactly when they
+are no longer needed. The question pane therefore draws its own indicator:
+a standing 4px rail whose thumb is sized to the visible fraction, turning
+brand-coloured while content remains below, plus a fade at the foot of the
+pane. Both disappear when the question fits.
+
+**Answering before continuing.** Validation always worked, but the failure
+was invisible: the error rendered at the end of the question, which on a
+390×780 screen put it 367px below the fold. Pressing Continue appeared to
+do nothing. Now an unanswered control is named in the always-visible action
+bar ("Answer 'How do customers reach you?' to continue"), the control is
+scrolled into view and marked with a red rule, and any answer clears it.
+
+**Desktop layout.** Below 940px the interface is a single column capped at
+620px, which is the right measure for reading. Above 940px that would leave
+most of the screen empty, so the layout changes rather than the text
+stretching:
+
+- **Assessment** — a 246px rail lists all nine questions grouped by their
+  SRS section, with the current one highlighted and answered ones
+  clickable. The dot strip is hidden, since the rail carries the same
+  information in more detail.
+- **Result** — a 320px column holds the verdict and the at-a-glance
+  scorecard and stays pinned while the decision path, findings and figures
+  scroll beside it.
+- **Landing** — the mark sits beside the copy rather than above it.
+
+Line length stays comfortable at every width; the extra space carries
+navigation and summary, not longer lines. Verified at 320, 390, 768, 940,
+1280 and 1920px with no overflow at any of them.
 
 **Landing.** One call to action. The worked-example loader is a quiet text
 link rather than a button — it is needed for §11's one-to-two-minute
