@@ -13,15 +13,43 @@ user has not yet tested.
 **No install.** Open `web/index.html` in any browser. The Prolog engine
 (Tau-Prolog) runs in the page; there is no server and no backend.
 
-**With a server** (so edits to `kb/*.pl` show up without rebuilding):
+**With a server** (so edits to `kb/*.pl` show up without rebuilding, and
+the knowledge editor can save):
 
 ```
-npm run serve          # http://localhost:8080
+npm run serve          # http://localhost:8080/web/
 ```
 
 **Published.** Push to GitHub and enable Pages on the repository root —
 `index.html` redirects into `web/`, and `.nojekyll` keeps the vendor files
 intact.
+
+## Knowledge editor
+
+`http://localhost:8080/web/editor.html`. The passcode is `boss-admin`
+until you copy `.env.example` to `.env` and set `BOSS_EDITOR_PASS` there
+(or set it in the environment, which takes priority); restart the server
+after changing it. It is for the knowledge engineer, not the person
+screening a business, so the assessment does not link to it.
+
+- **Rules:** each rule's conclusion, CF, level, conditions, explanation
+  and next action. Add or delete rules. A picker inserts conditions over
+  the attributes the questionnaire already collects.
+- **Facts:** the 25 fixed domain facts, as values to add or remove.
+- **Source:** the five `.pl` files as text, for anything the forms do not cover.
+- **Changes:** a line diff against what is saved.
+
+After every change the whole knowledge base is checked again. It is
+consulted, verified by `kb/boss_kbcheck.pl`, and all eight validation
+cases are replayed; a case whose verdict changed is marked. **Save** is
+refused while there are errors. The server checks again before writing,
+keeps the old files in `kb/.history/`, and rebuilds the bundles. Form
+edits change only the clause or line concerned, so comments and layout
+in the `.pl` files survive.
+
+Opened from disk or GitHub Pages, the editor is read-only: it still
+validates, and **Export** downloads the changed files. See DECISIONS.md,
+decisions 18 and 19.
 
 ## Layout
 
@@ -32,12 +60,16 @@ kb/                   the knowledge base — no interface code
   boss_rules.pl       the 25 expert rules with their certainty factors (§7)
   boss_infer.pl       rule stratification, severity tables, §9.1 priority ladder
   boss_advice.pl      plain-language rule text and next actions (§10)
+  boss_kbcheck.pl     knowledge-base verification for the editor; not
+                      loaded by the assessment
 
 web/                  the interface — no business knowledge
   index.html          page shell
   schema.js           which control creates which Prolog fact (§4.1);
                       7 sections, 9 questions, 15 inputs
   app.js              step navigation, decision-path diagram, saved assessments
+  editor.html/.js/.css  the knowledge editor
+  kbtools.js          validation shared by the editor, server.js and the tests
   styles.css
   public/             trademark.png (source) and the logo.png / icon.png
                       generated from it; brand palette is sampled from it
@@ -51,8 +83,10 @@ test/
   run_tau.js          runs them under Tau-Prolog (the shipping engine)
   run_ui.js           runs them through web/schema.js's fact mapping
   run_browser.js      drives the real page in Chromium
+  run_kbcheck.js      runs the checker on the shipped KB, plus ten mutations it must catch
 
 build.js              regenerates the two bundles from kb/ and test/
+server.js             serves the app and saves editor changes; no dependencies
 DECISIONS.md          the five underdetermined SRS points, and how they were resolved
 ```
 
@@ -63,7 +97,7 @@ in `kb/`. Editing a rule means editing `kb/boss_rules.pl` and nothing else.
 ## Testing
 
 ```
-npm test               # Tau-Prolog + UI mapping + rule/fact coverage
+npm test               # Tau-Prolog + UI mapping + coverage + KB checks
 npm run test:swi       # the same 6 cases under SWI-Prolog
 npm run test:e2e       # drives the page in Chromium (needs playwright)
 ```

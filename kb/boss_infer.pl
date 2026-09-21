@@ -102,23 +102,35 @@ absolute_override :-
 
 % ------------------------------------------------------------
 % SRS 9.1 priority order
+% The verdict carries the CF of the rule that decided it (SRS 8.1:
+% "the final recommendation rule has its own CF"), so a CF edited in
+% boss_rules.pl is the CF the user sees. Only the two exits no rule
+% covers - out of scope and the fall-through - state 0.0 here.
 % ------------------------------------------------------------
 
 recommendation(Rec, CF) :-
     (   out_of_scope(_)
     ->  Rec = out_of_scope,                  CF = 0.0
     ;   absolute_override
-    ->  Rec = not_recommended,               CF = -1.0
+    ->  Rec = not_recommended,               override_cf(CF)
     ;   critical_unknown(_)
-    ->  Rec = further_validation_required,   CF = 0.0
+    ->  Rec = further_validation_required,   rule_cf(r22, CF)
     ;   fires(r23)
-    ->  Rec = proceed,                       CF = 0.8
+    ->  Rec = proceed,                       rule_cf(r23, CF)
     ;   fires(r24)
-    ->  Rec = proceed_with_caution,          CF = 0.6
+    ->  Rec = proceed_with_caution,          rule_cf(r24, CF)
     ;   fires(r25)
-    ->  Rec = not_recommended_in_this_form,  CF = -0.8
+    ->  Rec = not_recommended_in_this_form,  rule_cf(r25, CF)
     ;   Rec = further_validation_required,   CF = 0.0
     ).
+
+rule_cf(Id, CF) :-
+    once(rule(Id, _, CF)).
+
+% Several overrides may fire; the strongest (most negative) decides.
+override_cf(CF) :-
+    findall(C, ( override_fired(Id), rule_cf(Id, C) ), Cs),
+    sort(Cs, [CF|_]).
 
 % ------------------------------------------------------------
 % The path through the SRS 9.1 ladder that produced this answer.

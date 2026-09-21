@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>B0SS Knowledge Editor</title>
+<meta name="author" content="Kularathna GGAS (224110P)">
+<meta name="description" content="Edit the B0SS rules, certainty factors, facts and advice, with every change checked against the knowledge base and the validation cases.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#123E63">
+<link rel="icon" href="public/icon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="editor.css">
+</head>
+<body>
+
+<!-- ============ PASSCODE ============ -->
+<div id="view-gate" class="view hidden">
+  <main class="gate">
+    <form class="gate-in" id="gate-form">
+      <span class="mark"><img src="public/icon.png" alt=""><span class="mark-txt"><span class="wm">B<span class="zero">0</span>SS</span><span class="by">by Kularathna GGAS (224110P)</span></span></span>
+      <h1>Knowledge editor</h1>
+      <p class="gate-lede">For the knowledge engineer. A saved change alters every assessment B0SS gives.</p>
+      <label class="fld">
+        <span class="fld-l">Passcode</span>
+        <input type="password" id="gate-pass" autocomplete="new-password" required>
+      </label>
+      <p class="gate-err" id="gate-err" role="alert"></p>
+      <div class="gate-row">
+        <button class="btn btn-primary" type="submit">Unlock</button>
+        <a class="linkish" href="./">Back to B0SS</a>
+      </div>
+    </form>
+  </main>
+</div>
+
+<!-- ============ EDITOR ============ -->
+<div id="view-editor" class="view hidden">
+  <header class="topbar ed-top">
+    <div class="topbar-in">
+      <a class="btn btn-ghost btn-sm" href="./" aria-label="Back to B0SS">←<span class="wide"> B0SS</span></a>
+      <span class="mark"><img src="public/icon.png" alt=""><span class="mark-txt"><span class="wm">Knowledge editor</span><span class="by" id="ed-mode"></span></span></span>
+      <span class="ed-status" id="ed-status" aria-live="polite"></span>
+      <button class="btn btn-sm" id="btn-export">Export</button>
+      <button class="btn btn-sm btn-primary" id="btn-save">Save</button>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Editor sections">
+      <button data-tab="rules">Rules</button>
+      <button data-tab="facts">Facts</button>
+      <button data-tab="source">Source</button>
+      <button data-tab="changes">Changes</button>
+    </nav>
+  </header>
+
+  <div class="ed-panes">
+    <main class="pane scroll ed-main" id="ed-main"></main>
+    <aside class="pane scroll ed-side" id="ed-side" aria-label="Validation"></aside>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="vendor/tau-prolog-core.js"></script>
+<script src="vendor/tau-prolog-lists.js"></script>
+<script src="kb-bundle.js"></script>
+<script src="cases-bundle.js"></script>
+<script src="schema.js"></script>
+<script src="kbtools.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

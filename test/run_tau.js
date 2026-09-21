@@ -76,6 +76,6 @@ function runCase(c) {
       console.log(`        expected ${c.rec} (${c.cf})  got ${r.gotRec} (${r.gotCf}) ${r.why || ''}`);
     }
   }
-  console.log(fails ? `\n${fails} failure(s).\n` : '\nAll 6 cases passed under Tau-Prolog.\n');
+  console.log(fails ? `\n${fails} failure(s).\n` : `\nAll ${cases.length} cases passed under Tau-Prolog.\n`);
   process.exit(fails ? 1 : 0);
 })();

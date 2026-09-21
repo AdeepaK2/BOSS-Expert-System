@@ -424,6 +424,70 @@ artwork has a white ground, the landing page sets it on a white rounded
 panel, which is invisible against the light theme and reads as a
 deliberate card in the dark one.
 
+## Decision 18 — A knowledge editor, and a checker it cannot bypass
+
+**Problem.** FR-11 keeps the knowledge base apart from the interface so
+it can be edited, but the only way to edit it was a text editor on
+`kb/*.pl`. Nothing stopped an edit that loads but quietly breaks the
+system: a rule with no `rule_level/2` never fires, a misspelt value
+(`validatd`) makes a condition that can never hold, and a rule that
+reads its own level through `holds/1` can loop. None of these raise an
+error; the answer is just wrong.
+
+**Resolved.** A knowledge editor (`web/editor.html`) for the knowledge
+engineer, behind a passcode, and a verification program in Prolog
+(`kb/boss_kbcheck.pl`) that every edit must pass.
+
+- The checker is meta-level: it reads the rules as data through
+  `clause/2` and reports `i(Severity, Code, Subject)`. Errors: CF not a
+  number or outside −1…1; duplicate id; no level; no explanation text;
+  a missing rule that `boss_infer.pl` names directly (R10, R11, R21–R25);
+  a call to an undefined predicate; a value no answer can produce; a
+  verdict with no `verdict_text/2`; an answer the questionnaire offers
+  that the fixed facts no longer recognise; and a rule that reads
+  conclusions from its own level or above (stratification). Warnings:
+  two rules at one level that can fire together with different values
+  of the same conclusion; a concern with no next action; a level-3 rule
+  the §9.1 ladder does not consult.
+- `rule/3` is declared dynamic for this, because Tau-Prolog refuses
+  `clause/2` on static code. Nothing asserts or retracts rules.
+- The editor, `server.js` and `npm test` all validate through one
+  module, `web/kbtools.js`: consult, run the checker, replay the eight
+  validation cases, measure coverage. The server re-validates on save
+  and refuses a knowledge base with errors, takes the checker from disk
+  rather than from the request, keeps the previous files in
+  `kb/.history/`, and rebuilds the bundles.
+- `test/run_kbcheck.js` breaks the knowledge base ten different ways and
+  requires the checker to catch each one.
+
+**Findings on the shipped knowledge base.** No errors. Four warnings,
+left for the expert:
+
+| Rules | Finding |
+|---|---|
+| R01, R02 | Validated, specific, recurring demand fires both: market is both *high* and *moderate*. The trace lists both. |
+| R08, R12 | A plan short of capital with a healthy margin and early cash is both *marginal* and *ready*. |
+| R07, R08 | Flagged, but R07 needs `A >= R` and R08 `A < R`: they cannot both fire. The checker does not compare numeric tests. |
+| R25 | A concern with no `next_action/2`. When it is among the top three concerns it adds no next action; the others' actions still show. |
+
+**For the expert to confirm:** whether R01/R02 and R08/R12 should be made
+mutually exclusive, or kept as supporting evidence (SRS 8.1).
+
+## Decision 19 — The verdict's CF comes from the rule that decided it
+
+**Problem.** Found with the editor. `recommendation/2` wrote each
+verdict's CF into the ladder as a literal (`proceed` → 0.8, and so on)
+instead of reading it from R22–R25 or the override that fired. Changing
+R23's CF in `boss_rules.pl` changed the trace but not the verdict, which
+contradicts SRS 8.1 ("the final recommendation rule has its own CF")
+and FR-11.
+
+**Resolved.** The ladder now takes the CF from the deciding rule
+(`rule_cf/2`), and from the strongest override that fired
+(`override_cf/1`). Only the two exits that no rule covers, out of scope
+and the fall-through, still state 0.0. All eight cases give identical
+results under both engines, because the literals matched the rules.
+
 ---
 
 ## Interface note

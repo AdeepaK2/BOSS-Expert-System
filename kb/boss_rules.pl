@@ -14,6 +14,11 @@
 % evidence is present. It is NOT a probability of business success.
 % ============================================================
 
+% Dynamic only so the knowledge editor's checks (boss_kbcheck.pl) can
+% read rule bodies with clause/2: Tau-Prolog refuses clause/2 on
+% static code. Nothing asserts or retracts rules at run time.
+:- dynamic(rule/3).
+
 % ---------- Market attractiveness ----------
 
 % R01 - strongest practical evidence of a repeatable market.
