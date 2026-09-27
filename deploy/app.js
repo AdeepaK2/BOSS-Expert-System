@@ -1,0 +1,958 @@
+/* ============================================================
+   B0SS - interface layer.
+
+   This file contains NO business knowledge. Every fact, rule,
+   certainty factor and piece of advice lives in kb/*.pl and is
+   reached through Tau-Prolog (FR-11). What follows is only:
+   which control creates which Prolog fact, and how to display
+   what the inference engine returns.
+   ============================================================ */
+
+(function () {
+'use strict';
+
+/* ---------- 1. Question schema: control -> Prolog fact ---------- */
+
+const { SECTIONS, visibleQuestions: visibleQ, visibleControls: visibleC,
+        factsFor, answersFromFacts, countQuestions } =
+  (typeof BOSS_SCHEMA !== 'undefined') ? BOSS_SCHEMA : require('./schema.js');
+
+/* ---------- 2. Prolog engine ---------- */
+
+const KB_FILES = ['boss_kb.pl', 'boss_derive.pl', 'boss_rules.pl', 'boss_infer.pl', 'boss_advice.pl'];
+let kbSource = null;
+
+async function loadKB() {
+  if (kbSource) return kbSource;
+  // When served over http, read the .pl files directly so edits show up
+  // without rebuilding. Under file:// fall back to the generated bundle.
+  if (location.protocol !== 'file:') {
+    try {
+      const parts = await Promise.all(
+        KB_FILES.map(f => fetch('../kb/' + f).then(r => {
+          if (!r.ok) throw new Error(r.status); return r.text();
+        }))
+      );
+      kbSource = ':- use_module(library(lists)).\n' + parts.join('\n');
+      return kbSource;
+    } catch (e) {
+      console.info('B0SS: serving kb/*.pl failed, using kb-bundle.js', e.message);
+    }
+  }
+  if (!window.BOSS_KB) throw new Error('kb-bundle.js missing — run: node build.js');
+  kbSource = ':- use_module(library(lists)).\n' + KB_FILES.map(f => window.BOSS_KB[f]).join('\n');
+  return kbSource;
+}
+
+function toJS(t) {
+  if (t == null) return null;
+  if (pl.type.is_number(t)) return t.value;
+  if (pl.type.is_variable(t)) return null;
+  if (pl.type.is_term(t)) {
+    if (t.indicator === '[]/0') return [];
+    if (t.indicator === './2') {
+      const arr = []; let cur = t;
+      while (cur && cur.indicator === './2') { arr.push(toJS(cur.args[0])); cur = cur.args[1]; }
+      return arr;
+    }
+    if (!t.args.length) return t.id;
+    return { f: t.id, args: t.args.map(toJS) };
+  }
+  return String(t);
+}
+
+function query(session, goal) {
+  return new Promise((resolve, reject) => {
+    session.query(goal, {
+      success: () => session.answer(ans => {
+        if (!ans || ans === false) return resolve(null);
+        if (pl.type.is_error(ans)) return reject(new Error(pl.format_answer(ans)));
+        const out = {};
+        for (const k in ans.links) out[k] = toJS(ans.links[k]);
+        resolve(out);
+      }),
+      error: e => reject(new Error(pl.format_answer(e)))
+    });
+  });
+}
+
+async function runAssessment(answers) {
+  const src = await loadKB();
+  const session = pl.create(2000000);
+  const program = src + '\n' + factsFor(answers).map(f => f + '.').join('\n');
+
+  await new Promise((resolve, reject) => {
+    session.consult(program, { success: resolve, error: e => reject(new Error(pl.format_answer(e))) });
+  });
+
+  const a = await query(session, 'assess(A).');
+  if (!a || !a.A) throw new Error('The knowledge base returned no assessment.');
+  const [rec, cf, pos, con, missing, gaps, trace, money, scope, concl, path] = a.A.args;
+
+  const lbl  = await query(session, `cf_label(${cf}, L).`);
+  const vt   = await query(session, `verdict_text(${rec}, T), verdict_blurb(${rec}, B).`);
+  const rt   = await query(session, 'findall(p(I,T), rule_text(I,T), L).');
+  const na   = await query(session, 'findall(p(I,T), next_action(I,T), L).');
+  const ua   = await query(session, 'findall(p(K,T), unknown_action(K,T), L).');
+  const ul   = await query(session, 'findall(p(K,T), unknown_label(K,T), L).');
+  const gl   = await query(session, 'findall(p(K,T), gap_label(K,T), L).');
+  const ga   = await query(session, 'findall(p(K,T), gap_action(K,T), L).');
+  const gk   = await query(session, 'findall(p(K,T), gate_label(K,T), L).');
+  const gd   = await query(session, 'findall(p(K,T), gate_detail(K,T), L).');
+  const go   = await query(session, 'findall(p(K,T), gate_outcome(K,T), L).');
+  const cl   = await query(session, 'findall(p(K,T), conclusion_label(K,T), L).');
+  const cw   = await query(session, 'findall(p(K-V,T), conclusion_word(K,V,T), L).');
+  const ct   = await query(session, 'findall(p(K-V,T), conclusion_tone(K,V,T), L).');
+
+  const pairs = r => Object.fromEntries((r && r.L ? r.L : []).map(p => [p.args[0], p.args[1]]));
+  // keys arrive as the compound K-V
+  const keyed = r => Object.fromEntries((r && r.L ? r.L : []).map(p => {
+    const k = p.args[0];
+    return [k.args[0] + '-' + k.args[1], p.args[1]];
+  }));
+
+  return {
+    rec, cf,
+    cfLabel: lbl ? lbl.L : '',
+    title: vt ? vt.T : rec,
+    blurb: vt ? vt.B : '',
+    positives: pos, concerns: con,
+    missing, gaps, trace,
+    money: { req: money.args[0], funded: money.args[1], gap: money.args[2] },
+    scope: { state: scope.args[0], bad: scope.args[1] },
+    conclusions: (concl || []).map(c => ({ key: c.args[0], value: c.args[1] })),
+    cLabel: pairs(cl),
+    cWord: keyed(cw), cTone: keyed(ct),
+    ruleText: pairs(rt), nextAction: pairs(na),
+    unknownAction: pairs(ua), unknownLabel: pairs(ul),
+    gapLabel: pairs(gl), gapAction: pairs(ga),
+    path: (path || []).map(d => ({ gate: d.args[0], state: d.args[1], detail: d.args[2] })),
+    gateLabel: pairs(gk), gateDetail: pairs(gd), gateOutcome: pairs(go)
+  };
+}
+
+/* ---------- 3. State ---------- */
+
+const state = { answers: {}, step: 0, furthest: 0, result: null, editing: null };
+
+const $  = s => document.querySelector(s);
+const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+const fmt = n => typeof n === 'number' ? n.toLocaleString('en-LK', { maximumFractionDigits: 0 }) : String(n);
+const fmt1 = n => typeof n === 'number' ? (Math.round(n * 10) / 10).toLocaleString('en-LK') : String(n);
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function show(view) {
+  for (const v of ['landing', 'assess', 'result']) $('#view-' + v).classList.toggle('hidden', v !== view);
+  document.querySelectorAll('#view-' + view + ' .scroll, #view-' + view + ' .panes')
+          .forEach(n => { n.scrollTop = 0; });
+}
+
+/* ---------- 4. Assessment: one question per screen ---------- */
+
+/* The questions of every section, flattened, with their section. */
+function steps() {
+  const out = [];
+  SECTIONS.forEach((sec, si) => {
+    visibleQ(sec, state.answers).forEach(q => out.push({ sec, si, q }));
+  });
+  return out;
+}
+
+function controlsOf(q) { return visibleC(q, state.answers); }
+
+function renderStep(dir) {
+  const all = steps();
+  if (state.step >= all.length) return recompute();
+  const { sec, q } = all[state.step];
+
+  const host = $('#step-host');
+  host.innerHTML = '';
+  const node = el('section', dir === 'none' ? 'step no-anim'
+                           : 'step' + (dir === 'back' ? ' back' : ''));
+
+  node.appendChild(el('div', 'eyebrow', sec.title));
+  node.appendChild(el('label', 'q-label', q.label));
+  if (q.help) node.appendChild(el('p', 'q-help', q.help));
+
+  const cs = controlsOf(q);
+  cs.forEach((c, i) => {
+    const box = renderControl(c, (state.step + 1) + '.' + (i + 1));
+    box.dataset.ctrl = c.id;
+    node.appendChild(box);
+  });
+  if (q.calc) node.appendChild(renderCalc());
+
+  host.appendChild(node);
+  renderFoot(all);
+  renderDots();
+  renderRail();
+  updateCalc();
+  if (dir !== 'none') host.scrollTop = 0;
+  requestAnimationFrame(updateMore);
+}
+
+function renderFoot(all) {
+  const foot = $('#step-foot');
+  foot.innerHTML = '';
+  const inner = el('div', 'step-foot-in');
+
+  if (state.step > 0) {
+    const back = el('button', 'btn', '← Back');
+    back.onclick = goBack;
+    inner.appendChild(back);
+  }
+  const of = el('span', 'of');
+  of.id = 'foot-msg';
+  of.textContent = (state.step + 1) + ' of ' + all.length;
+  inner.appendChild(of);
+  inner.appendChild(el('span', 'spacer'));
+
+  const last = state.step === all.length - 1;
+  const next = el('button', 'btn btn-primary', last ? 'See result' : 'Continue');
+  next.onclick = goNext;
+  inner.appendChild(next);
+  foot.appendChild(inner);
+}
+
+function renderControl(c, num) {
+  const box = el('div', 'ctrl');
+  const head = el('div', 'ctrl-head');
+  head.appendChild(el('span', 'ctrl-num', num));
+  head.appendChild(el('label', 'ctrl-label', c.label || ''));
+  box.appendChild(head);
+  if (c.help) box.appendChild(el('p', 'q-help', c.help));
+
+  if (c.type === 'number') {
+    const row = el('div', 'num-row');
+    if (c.prefix) row.appendChild(el('span', 'num-pre', c.prefix));
+    const input = el('input');
+    input.type = 'number'; input.min = '0'; input.inputMode = 'numeric';
+    input.placeholder = '0';
+    input.value = state.answers[c.id] ?? '';
+    input.disabled = c.unknownFact && state.answers[c.unknownFact] === 'unknown';
+    input.oninput = () => {
+      const v = input.value.trim();
+      state.answers[c.id] = v === '' ? undefined : Number(v);
+      if (v !== '') clearMissing();
+      updateCalc();
+    };
+    input.onchange = () => { if (answered(c)) advanceWithin(c.id, true); };
+    input.onkeydown = e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (answered(c)) advanceWithin(c.id, true);
+    };
+    row.appendChild(input);
+    if (c.suffix) row.appendChild(el('span', 'num-suf', c.suffix));
+    const wrapN = el('div', 'answers');
+    wrapN.appendChild(row);
+    box.appendChild(wrapN);
+
+    if (c.unknownFact) {
+      const l = el('label', 'opt');
+      const cb = el('input'); cb.type = 'checkbox';
+      cb.checked = state.answers[c.unknownFact] === 'unknown';
+      cb.onchange = () => {
+        state.answers[c.unknownFact] = cb.checked ? 'unknown' : 'known';
+        if (cb.checked) state.answers[c.id] = undefined;
+        renderStep();
+      };
+      l.appendChild(cb);
+      const t = el('div', 'opt-txt'); t.appendChild(el('b', null, c.unknownLabel));
+      l.appendChild(t);
+      box.querySelector('.answers').appendChild(l);
+    }
+    return box;
+  }
+
+  const opts = el('div', 'opts');
+  for (const o of c.options) {
+    const [val, title, sub, , isUnknown] = o;
+    const l = el('label', 'opt' + (isUnknown ? ' unknown' : ''));
+    const input = el('input');
+    input.type = 'radio'; input.name = c.id; input.value = val;
+    input.checked = state.answers[c.id] === val;
+    input.onchange = () => {
+      const before = controlsOf(currentQ()).map(x => x.id).join();
+      state.answers[c.id] = val;
+      clearMissing();
+      // Some answers change which controls apply (e.g. funding source).
+      if (controlsOf(currentQ()).map(x => x.id).join() !== before) { renderStep('none'); return; }
+      advanceWithin(c.id, true);
+    };
+    l.appendChild(input);
+    const txt = el('div', 'opt-txt');
+    txt.appendChild(el('b', null, title));
+    if (sub) txt.appendChild(el('span', null, sub));
+    l.appendChild(txt);
+    opts.appendChild(l);
+  }
+  const wrapA = el('div', 'answers');
+  wrapA.appendChild(opts);
+  box.appendChild(wrapA);
+  return box;
+}
+
+function currentQ() {
+  const all = steps();
+  return all[Math.min(state.step, all.length - 1)].q;
+}
+
+function renderCalc() { const b = el('div', 'calc'); b.id = 'calc'; return b; }
+
+/* SRS 4.2, shown live while the money question is answered. */
+function updateCalc() {
+  const box = document.getElementById('calc');
+  if (!box) return;
+  const a = state.answers;
+  const s = a.startup_cost, m = a.monthly_cost, c = a.capital_available;
+  if (typeof s !== 'number' || typeof m !== 'number') {
+    box.innerHTML = '<div class="calc-row"><span>Capital requirement</span><b>—</b></div>';
+    return;
+  }
+  const req = s + 6 * m;
+  let html = '<div class="calc-row"><span>Capital requirement</span><b>LKR ' + fmt(req) + '</b></div>' +
+             '<div class="calc-row"><span>' + fmt(s) + ' + (6 × ' + fmt(m) + ')</span><span></span></div>';
+  if (typeof c === 'number' && m > 0 && a.capital_status !== 'unknown') {
+    html += '<div class="calc-row" style="margin-top:.55em"><span>Months you are funded for</span><b>' +
+            fmt1(Math.max(0, c - s) / m) + '</b></div>';
+  }
+  box.innerHTML = html;
+}
+
+function answered(c) {
+  if (c.unknownFact && state.answers[c.unknownFact] === 'unknown') return true;
+  const v = state.answers[c.id];
+  return v !== undefined && v !== null && v !== '' && !(typeof v === 'number' && isNaN(v));
+}
+
+function stepComplete(i) {
+  const all = steps();
+  if (i >= all.length) return true;
+  return controlsOf(all[i].q).every(answered);
+}
+
+function firstUnanswered(i) {
+  const all = steps();
+  if (i >= all.length) return null;
+  return controlsOf(all[i].q).find(c => !answered(c)) || null;
+}
+
+/* The unanswered control may be well below the fold, so say what is
+   missing in the always-visible footer and scroll to it. */
+function flagMissing(c) {
+  const msg = $('#foot-msg');
+  if (msg) {
+    msg.textContent = 'Answer “' + (c.label || currentQ().label) + '” to continue';
+    msg.classList.add('bad');
+  }
+  const box = document.querySelector('[data-ctrl="' + c.id + '"]');
+  if (!box) return;
+  document.querySelectorAll('.ctrl.invalid').forEach(n => n.classList.remove('invalid'));
+  box.classList.add('invalid');
+  scrollControlIntoView(box, 'center');
+  const field = box.querySelector('input');
+  if (field && field.type !== 'radio') field.focus({ preventScroll: true });
+}
+
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Show or hide the "there is more below" fade. */
+function updateMore() {
+  const wrap = $('#stage-body'), sc = $('#step-host'), bar = $('#stage-bar');
+  if (!wrap || !sc) return;
+  const hidden = sc.scrollHeight - sc.clientHeight;
+  wrap.classList.toggle('overflows', hidden > 2);
+  wrap.classList.toggle('more', hidden - sc.scrollTop > 6);
+  if (bar && hidden > 2) {
+    const track = bar.clientHeight;
+    const thumb = bar.firstElementChild;
+    const h = Math.max(26, Math.round(track * sc.clientHeight / sc.scrollHeight));
+    thumb.style.height = h + 'px';
+    thumb.style.top = Math.round((track - h) * (sc.scrollTop / hidden)) + 'px';
+  }
+}
+
+function scrollControlIntoView(box, block) {
+  const sc = $('#step-host');
+  if (!sc || !box) return;
+  const br = box.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+  const pad = block === 'center' ? (sr.height - br.height) / 2 : 22;
+  sc.scrollTo({ top: sc.scrollTop + (br.top - sr.top) - Math.max(16, pad),
+                behavior: REDUCED ? 'auto' : 'smooth' });
+}
+
+/* After answering one sub-question, move to the next unanswered one so the
+   user never has to discover it by pressing Continue. */
+function advanceWithin(afterId, moveFocus) {
+  const cs = controlsOf(currentQ());
+  const i = cs.findIndex(c => c.id === afterId);
+  if (i < 0) return;
+  const next = cs.slice(i + 1).find(c => !answered(c));
+  if (!next) { updateMore(); return; }
+  const box = document.querySelector('[data-ctrl="' + next.id + '"]');
+  if (!box) return;
+
+  const sc = $('#step-host');
+  const br = box.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+  const onScreen = br.top >= sr.top && br.top < sr.bottom - 80;
+
+  if (!onScreen) {
+    scrollControlIntoView(box);
+    box.classList.remove('landed');
+    void box.offsetWidth;
+    box.classList.add('landed');
+  }
+
+  // Typing a number and pressing Enter should behave like Tab, whether or
+  // not the next field needed scrolling into view.
+  const field = box.querySelector('input[type="number"]');
+  if (field && moveFocus) {
+    const go = () => field.focus({ preventScroll: true });
+    if (onScreen || REDUCED) go(); else setTimeout(go, 320);
+  }
+  setTimeout(updateMore, REDUCED ? 0 : 420);
+}
+
+function clearMissing() {
+  const all = steps();
+  const msg = $('#foot-msg');
+  if (msg) { msg.textContent = (state.step + 1) + ' of ' + all.length; msg.classList.remove('bad'); }
+  document.querySelectorAll('.ctrl.invalid').forEach(n => n.classList.remove('invalid'));
+}
+
+function goNext() {
+  const missing = firstUnanswered(state.step);
+  if (missing) { flagMissing(missing); return; }
+  clearMissing();
+  state.furthest = Math.max(state.furthest, state.step + 1);
+  state.step++;
+  renderStep();
+}
+
+function goBack() {
+  if (state.step === 0) return;
+  state.step--;
+  renderStep('back');
+}
+
+function goToStep(i) {
+  if (i > state.furthest) return;
+  const dir = i < state.step ? 'back' : 'fwd';
+  state.step = i;
+  renderStep(dir);
+}
+
+function renderRail() {
+  const all = steps();
+  const host = $('#rail');
+  if (!host) return;
+  host.innerHTML = '';
+  let lastSec = null;
+  all.forEach((st, i) => {
+    if (st.sec !== lastSec) {
+      host.appendChild(el('div', 'rail-sec', st.sec.title));
+      lastSec = st.sec;
+    }
+    const cls = i === state.step ? 'now'
+              : (i < state.furthest && stepComplete(i)) ? 'done' : 'todo';
+    const b = el('button', 'rail-item ' + cls);
+    b.type = 'button';
+    b.appendChild(el('span', 'n', String(i + 1)));
+    b.appendChild(el('span', null, st.q.label));
+    if (i <= state.furthest) b.onclick = () => goToStep(i);
+    host.appendChild(b);
+  });
+}
+
+function renderDots() {
+  const all = steps();
+  const host = $('#dots');
+  host.innerHTML = '';
+  all.forEach((_, i) => {
+    const d = el('button', 'dot ' +
+      (i === state.step ? 'now' : stepComplete(i) && i < state.furthest ? 'done' : 'todo'));
+    d.type = 'button';
+    d.title = 'Question ' + (i + 1) + ' of ' + all.length;
+    d.setAttribute('aria-label', d.title);
+    if (i <= state.furthest) d.onclick = () => goToStep(i);
+    host.appendChild(d);
+  });
+  $('#step-count').textContent = (state.step + 1) + ' / ' + all.length;
+}
+
+/* ---------- 5. Result ---------- */
+
+async function recompute() {
+  try {
+    state.result = await runAssessment(state.answers);
+    renderResult();
+    show('result');
+  } catch (e) {
+    console.error(e);
+    toast('Could not run the knowledge base: ' + e.message);
+  }
+}
+
+const VERDICT_SHORT = {
+  out_of_scope: 'Not screenable',
+  not_recommended: 'Not recommended',
+  further_validation_required: 'Validate first',
+  proceed: 'Proceed',
+  proceed_with_caution: 'Proceed with caution',
+  not_recommended_in_this_form: 'Not in this form'
+};
+
+/* Why each gate answered as it did, from the detail the path carries. */
+function gateWhy(gate, d, r) {
+  const v = d.detail;
+  if (gate === 'scope' && d.state === 'exit') return 'Business type: ' + v;
+  if (gate === 'override' && d.state === 'exit')
+    return (Array.isArray(v) ? v : [v]).map(id => id.toUpperCase() + ' — ' + (r.ruleText[id] || '')).join(' ');
+  if (gate === 'unknowns' && d.state === 'exit' && Array.isArray(v))
+    return 'Unknown: ' + v.join(', ');
+  if ((gate === 'proceed' || gate === 'caution') && typeof v === 'number')
+    return v === 0 ? 'No weaknesses found'
+         : v + (v === 1 ? ' weakness' : ' weaknesses') + ' found';
+  if (gate === 'in_this_form' && typeof v === 'number')
+    return v + (v === 1 ? ' serious risk' : ' serious risks') + ' found';
+  return '';
+}
+
+const TONE = { proceed: 'good', proceed_with_caution: 'warn', further_validation_required: 'info',
+               not_recommended: 'bad', not_recommended_in_this_form: 'bad',
+               out_of_scope: 'bad' };
+
+function conclusionText(c) {
+  if (typeof c === 'string') return c;
+  if (c.f === 'and') return c.args.map(conclusionText).join(', ');
+  return c.f + '(' + c.args.map(conclusionText).join(', ') + ')';
+}
+
+function renderResult() {
+  const r = state.result;
+  const host = $('#result-body');
+  const side = $('#result-side');
+  host.innerHTML = '';
+  side.innerHTML = '';
+
+  const outOfScope = r.rec === 'out_of_scope';
+  const v = el('div', 'verdict ' + (TONE[r.rec] || ''));
+  if (!outOfScope) v.appendChild(el('div', 'verdict-cf', r.cfLabel));
+  const h = el('h1'); h.textContent = r.title;
+  v.appendChild(h);
+  if (!outOfScope) v.appendChild(cfScale(r.cf));
+  v.appendChild(el('p', null, r.blurb));
+  side.appendChild(v);
+
+  if (r.scope.bad && r.scope.bad.length) {
+    const w = el('div', 'notice');
+    w.appendChild(el('b', null, 'Unrecognised answer. '));
+    w.appendChild(document.createTextNode(
+      'The knowledge base has no facts for: ' + r.scope.bad.join(', ') +
+      '. That input was ignored rather than guessed at.'));
+    host.appendChild(w);
+  }
+
+  if (outOfScope) {
+    host.appendChild(el('div', 'disclaimer',
+      'B0SS screens small service, retail, online, education, professional-service, food and ' +
+      'owner-trade businesses. Anything needing specialist regulatory or technical judgement — ' +
+      'pharmacy, finance, insurance, alcohol, firearms, franchises, construction, agriculture — ' +
+      'is out of scope. (SRS \u00A72)'));
+    side.appendChild(resultFoot(false));
+    return;
+  }
+
+  // At a glance: the six intermediate conclusions of SRS section 6.
+  if (r.conclusions.length) {
+    const b = block('At a glance');
+    const grid = el('div', 'scorecard');
+    const order = ['market', 'competition', 'finance', 'owner', 'operations', 'risk'];
+    for (const key of order) {
+      const c = r.conclusions.find(x => x.key === key);
+      const cell = el('div', 'score' + (c ? ' ' + (r.cTone[key + '-' + c.value] || '') : ' none'));
+      cell.appendChild(el('span', 'score-k', r.cLabel[key] || key));
+      cell.appendChild(el('span', 'score-v',
+        c ? (r.cWord[key + '-' + c.value] || c.value) : 'Not assessed'));
+      grid.appendChild(cell);
+    }
+    b.appendChild(grid);
+    side.appendChild(b);
+  }
+
+  // How the answer was reached: the SRS 9.1 ladder with the route taken.
+  // Built here, placed after the findings: what to do comes before why.
+  let flowBlock = null;
+  if (r.path.length) {
+    const b = block('How this was decided');
+    const flow = el('div', 'flow');
+    const GATES = ['scope', 'override', 'unknowns', 'proceed', 'caution', 'in_this_form'];
+    const walked = Object.fromEntries(r.path.map(d => [d.gate, d]));
+    const exited = r.path[r.path.length - 1];
+
+    for (const g of GATES) {
+      const d = walked[g];
+      const isExit = d && d.state === 'exit';
+      const cls = !d ? 'gate dim' : isExit ? 'gate exit' : 'gate on';
+      const row = el('div', cls);
+
+      const rail = el('div', 'gate-rail');
+      rail.appendChild(el('div', 'gate-node'));
+      row.appendChild(rail);
+
+      // One line per gate: the question, then the answer given. The longer
+      // explanation of a gate is a tooltip rather than more text on the page.
+      const body = el('div', 'gate-body');
+      const line = el('div', 'gate-line');
+      const q = el('div', 'gate-q', r.gateLabel[g] || g);
+      if (r.gateDetail[g]) q.title = r.gateDetail[g];
+      line.appendChild(q);
+      body.appendChild(line);
+
+      if (d) {
+        const ans = el('div', 'gate-ans');
+        ans.textContent = isExit
+          ? 'Yes → ' + (VERDICT_SHORT[r.gateOutcome[g]] || r.gateOutcome[g])
+          : (g === 'scope' ? 'Yes' : 'No');
+        line.appendChild(ans);
+        const why = gateWhy(g, d, r);
+        if (why) body.appendChild(el('div', 'gate-why', why));
+      }
+      row.appendChild(body);
+      flow.appendChild(row);
+    }
+
+    if (exited && exited.gate === 'insufficient') {
+      const row = el('div', 'gate exit');
+      const rail = el('div', 'gate-rail'); rail.appendChild(el('div', 'gate-node'));
+      row.appendChild(rail);
+      const body = el('div', 'gate-body');
+      const line = el('div', 'gate-line');
+      line.appendChild(el('div', 'gate-q', r.gateLabel.insufficient));
+      line.appendChild(el('div', 'gate-ans', '→ ' + (VERDICT_SHORT.further_validation_required || '')));
+      body.appendChild(line);
+      row.appendChild(body);
+      flow.appendChild(row);
+    }
+
+    b.appendChild(flow);
+    flowBlock = b;
+  }
+
+  // One consolidated action list - the most useful thing on the page.
+  const actions = [];
+  for (const m of r.missing) if (r.unknownAction[m]) actions.push(r.unknownAction[m]);
+  for (const g of r.gaps) if (r.gapAction[g]) actions.push(r.gapAction[g]);
+  for (const c of r.concerns) { const a = r.nextAction[c.args[0]]; if (a) actions.push(a); }
+  if (actions.length) {
+    const b = block('Do this next');
+    const ol = el('ol', 'todo');
+    for (const a of actions.slice(0, 4)) ol.appendChild(el('li', null, a));
+    b.appendChild(ol);
+    host.appendChild(b);
+  }
+
+  // Missing information first when that is what decided the outcome.
+  // SRS section 6: critical items that are unknown or merely assumed.
+  if (r.missing.length || r.gaps.length) {
+    const b = block('Not yet known');
+    for (const m of r.missing)
+      b.appendChild(finding('unk', '?', r.unknownLabel[m] || (m + ' is not known.')));
+    for (const g of r.gaps)
+      b.appendChild(finding('unk', '?', r.gapLabel[g] || (g + ' is assumed.')));
+    host.appendChild(b);
+  }
+
+  // In its favour and Concerns sit side by side when the pane is wide enough.
+  if (r.positives.length || r.concerns.length) {
+    const cols = el('div', 'cols');
+    if (r.positives.length) {
+      const b = block('In its favour');
+      for (const p of r.positives) {
+        const [id, concl, cf] = p.args;
+        b.appendChild(finding('pos', '+', r.ruleText[id] || conclusionText(concl), null, id, cf));
+      }
+      cols.appendChild(b);
+    }
+    if (r.concerns.length) {
+      const b = block('Concerns');
+      for (const c of r.concerns) {
+        const [id, concl, cf] = c.args;
+        b.appendChild(finding('neg', '−', r.ruleText[id] || conclusionText(concl), null, id, cf));
+      }
+      cols.appendChild(b);
+    }
+    host.appendChild(cols);
+  }
+
+  // Visible arithmetic - SRS section 10.
+  if (typeof r.money.req === 'number') {
+    const b = block('The money');
+    const t = el('div', 'money-table');
+    t.appendChild(moneyRow('Capital needed', 'Startup + 6 months of running costs',
+      'LKR ' + fmt(r.money.req)));
+    if (typeof r.money.funded === 'number')
+      t.appendChild(moneyRow('Months funded', 'Capital left after opening ÷ monthly cost',
+        fmt1(r.money.funded) + ' months'));
+    if (typeof r.money.gap === 'number')
+      t.appendChild(moneyRow('Survival gap', 'Months funded − months to break even',
+        (r.money.gap >= 0 ? '+' : '') + fmt1(r.money.gap) + ' months'));
+    b.appendChild(t);
+    host.appendChild(b);
+  }
+
+  if (flowBlock) host.appendChild(flowBlock);
+
+  // FR-09: show reasoning.
+  const det = el('details', 'reasoning');
+  const sum = el('summary', null, 'Reasoning · ' + r.trace.length + (r.trace.length === 1 ? ' rule' : ' rules'));
+  det.appendChild(sum);
+  const tr = el('div', 'trace');
+  for (const f of r.trace) {
+    const [id, concl, cf] = f.args;
+    const row = el('div', 'trace-row');
+    row.appendChild(el('span', 'trace-id', id.toUpperCase()));
+    row.appendChild(el('span', 'trace-concl', conclusionText(concl)));
+    row.appendChild(el('span', 'trace-cf ' + (cf > 0 ? 'p' : cf < 0 ? 'n' : 'z'),
+      (cf > 0 ? '+' : '') + cf.toFixed(1)));
+    tr.appendChild(row);
+  }
+  det.appendChild(tr);
+  host.appendChild(det);
+
+  host.appendChild(el('div', 'disclaimer',
+    'One advisor\u2019s screening rules applied to your answers. Not market analysis, a prediction, ' +
+    'or legal, tax or financial advice.'));
+
+  side.appendChild(resultFoot(true));
+}
+
+/* The left pane's foot: save under a name, and the ways to leave this screen. */
+function resultFoot(canSave) {
+  const foot = el('div', 'res-foot');
+
+  if (canSave) {
+    const form = el('form', 'save-row');
+    const nameIn = el('input');
+    nameIn.type = 'text';
+    nameIn.placeholder = 'Name it, e.g. Tuition class';
+    nameIn.setAttribute('aria-label', 'Name this assessment');
+    nameIn.value = state.editing ? state.editing.name : '';
+    const saveBtn = el('button', 'btn btn-primary', state.editing ? 'Update' : 'Save');
+    saveBtn.type = 'submit';
+    form.onsubmit = e => { e.preventDefault(); saveAssessment(nameIn.value.trim()); };
+    form.appendChild(nameIn); form.appendChild(saveBtn);
+    foot.appendChild(form);
+  }
+
+  // Two across, then the one that starts over full width beneath them.
+  const acts = el('div', 'result-actions');
+  const add = (text, fn) => {
+    const b = el('button', 'btn', text);
+    b.onclick = fn;
+    acts.appendChild(b);
+  };
+  if (canSave) {
+    add('Change an answer', () => {
+      state.step = 0; state.furthest = steps().length; renderStep(); show('assess');
+    });
+    add('Print / PDF', () => window.print());
+  }
+  add(canSave ? 'Screen another business' : 'Screen a different business', () => startNew());
+  foot.appendChild(acts);
+  return foot;
+}
+
+/* The certainty factor as a number and as a position on the -1..+1 line,
+   filled from 0 towards the value so its sign and size read at a glance. */
+function cfScale(cf) {
+  const at = Math.max(-1, Math.min(1, cf));
+  const pct = (at + 1) * 50;
+  const wrap = el('div', 'cf');
+
+  const head = el('div', 'cf-head');
+  head.appendChild(document.createTextNode('CF: '));
+  head.appendChild(el('b', null, (cf > 0 ? '+' : '') + cf.toFixed(1)));
+  wrap.appendChild(head);
+
+  const row = el('div', 'cf-row');
+  row.appendChild(el('span', 'cf-end', '\u22121'));
+  const line = el('div', 'cf-line');
+  const fill = el('i', 'cf-fill');
+  fill.style.left = Math.min(50, pct) + '%';
+  fill.style.width = Math.abs(pct - 50) + '%';
+  line.appendChild(fill);
+  for (const t of [0, 25, 50, 75, 100]) {
+    const tick = el('i', 'cf-tick' + (t === 50 ? ' mid' : ''));
+    tick.style.left = t + '%';
+    line.appendChild(tick);
+  }
+  const dot = el('i', 'cf-dot');
+  dot.style.left = pct + '%';
+  line.appendChild(dot);
+  row.appendChild(line);
+  row.appendChild(el('span', 'cf-end', '+1'));
+  wrap.appendChild(row);
+  return wrap;
+}
+
+function block(title, sub) {
+  const b = el('div', 'block');
+  b.appendChild(el('h2', null, title));
+  if (sub) b.appendChild(el('p', 'block-sub', sub));
+  return b;
+}
+
+function finding(tone, mark, text, action, ruleId, cf) {
+  const f = el('div', 'finding ' + tone);
+  f.appendChild(el('div', 'finding-mark', mark));
+  const body = el('div', 'finding-body');
+  const p = el('p');
+  p.textContent = text;
+  if (ruleId) {
+    const pill = el('span', 'rid', ruleId.toUpperCase() + ' ' + (cf > 0 ? '+' : '') + cf.toFixed(1));
+    p.appendChild(pill);
+  }
+  body.appendChild(p);
+  if (action) {
+    const d = el('div', 'finding-do');
+    d.appendChild(el('b', null, 'Do this: '));
+    d.appendChild(document.createTextNode(action));
+    body.appendChild(d);
+  }
+  f.appendChild(body);
+  return f;
+}
+
+function moneyRow(label, sub, value) {
+  const row = el('div', 'money-row');
+  row.appendChild(el('span', 'money-k', label));
+  row.appendChild(el('b', null, value));
+  row.appendChild(el('small', null, sub));
+  return row;
+}
+
+/* ---------- 6. Saved assessments ---------- */
+
+const STORE = 'boss.history.v1';
+
+function history() {
+  try { return JSON.parse(localStorage.getItem(STORE) || '[]'); }
+  catch (e) { return []; }
+}
+function writeHistory(list) {
+  try { localStorage.setItem(STORE, JSON.stringify(list)); }
+  catch (e) { toast('Could not save — browser storage is unavailable.'); }
+}
+
+function saveAssessment(name) {
+  if (!name) { toast('Give it a name first.'); return; }
+  const list = history();
+  const entry = {
+    id: state.editing ? state.editing.id : String(Date.now()),
+    name, ts: Date.now(),
+    answers: { ...state.answers },
+    rec: state.result.rec, cf: state.result.cf, title: state.result.title
+  };
+  const at = list.findIndex(e => e.id === entry.id);
+  if (at >= 0) list[at] = entry; else list.unshift(entry);
+  writeHistory(list);
+  state.editing = entry;
+  renderHistory();
+  toast(at >= 0 ? 'Assessment updated.' : 'Assessment saved.');
+}
+
+function renderHistory() {
+  const list = history();
+  const host = $('#hist-list');
+  $('#history').classList.toggle('hidden', list.length === 0);
+  host.innerHTML = '';
+  for (const e of list) {
+    const item = el('button', 'hist-item');
+    const dot = el('span', 'hist-dot');
+    dot.style.background = 'var(--' + ({ good: 'good', warn: 'warn', info: 'info', bad: 'bad' }[TONE[e.rec]] || 'ink-3') + ')';
+    item.appendChild(dot);
+    const body = el('div', 'hist-body');
+    body.appendChild(el('span', 'hist-name', e.name));
+    body.appendChild(el('span', 'hist-meta',
+      (e.title || e.rec) + ' · ' + new Date(e.ts).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' })));
+    item.appendChild(body);
+    item.onclick = () => openSaved(e);
+    host.appendChild(item);
+
+    const del = el('button', 'hist-del', '×');
+    del.title = 'Delete';
+    del.onclick = ev => {
+      ev.stopPropagation();
+      if (!confirm('Delete "' + e.name + '"? This cannot be undone.')) return;
+      writeHistory(history().filter(x => x.id !== e.id));
+      renderHistory();
+      toast('Deleted.');
+    };
+    item.appendChild(del);
+  }
+}
+
+async function openSaved(entry) {
+  // Re-run rather than replaying a stored verdict, so a saved assessment
+  // always reflects the current knowledge base.
+  state.answers = { ...entry.answers };
+  state.editing = entry;
+  state.step = 0;
+  state.furthest = steps().length;
+  await recompute();
+}
+
+/* ---------- 7. Demo cases (SRS section 12) ---------- */
+
+let demoAt = 0;
+function loadDemo() {
+  const cases = window.BOSS_CASES || [];
+  if (!cases.length) { toast('Example cases are not built — run: node build.js'); return; }
+  const c = cases[demoAt % cases.length];
+  demoAt++;
+  state.answers = answersFromFacts(c.answers);
+  state.editing = null;
+  state.step = 0;
+  state.furthest = steps().length;
+  renderStep();
+  show('assess');
+  toast('Example ' + c.id + ': ' + c.name);
+}
+
+/* ---------- 8. Wiring ---------- */
+
+function startNew() {
+  state.answers = {};
+  state.step = 0; state.furthest = 0;
+  state.result = null; state.editing = null;
+  renderStep();
+  show('assess');
+}
+
+$('#btn-start').onclick = () => startNew();
+$('#btn-demo').onclick = loadDemo;
+$('#btn-home').onclick = () => { renderHistory(); show('landing'); };
+$('#btn-home-2').onclick = () => { renderHistory(); show('landing'); };
+
+renderHistory();
+
+$('#step-host').addEventListener('scroll', updateMore, { passive: true });
+window.addEventListener('resize', updateMore);
+
+document.addEventListener('keydown', e => {
+  if ($('#view-assess').classList.contains('hidden')) return;
+  if (e.target.matches('input, textarea')) return;
+  if (e.key === 'ArrowLeft') goBack();
+  if (e.key === 'ArrowRight' || e.key === 'Enter') goNext();
+});
+
+// Warm the engine so the first result is instant (NFR-Performance).
+loadKB().catch(e => console.warn('B0SS: knowledge base not preloaded —', e.message));
+
+})();
