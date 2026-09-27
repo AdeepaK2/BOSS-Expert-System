@@ -37,11 +37,9 @@ git commit -m "Deploy expert system with GitHub Pages"
 git push origin main
 ```
 
-The site is published at:
-
-```
-https://adeepak2.github.io/BOSS-Expert-System/
-```
+The site is published at
+[https://adeepak2.github.io/BOSS-Expert-System/](https://adeepak2.github.io/BOSS-Expert-System/).
+Every push to `main` automatically starts a fresh deployment.
 
 When the assessment interface changes, update the corresponding files in
 `deploy/` before pushing. After changing files in `kb/`, run `node build.js`
