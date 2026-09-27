@@ -189,7 +189,7 @@ button { font: inherit; cursor: pointer; }
 
 /* ---------- Landing ---------- */
 
-.landing { padding-block: 56px 48px; }
+.landing { min-height: 100%; padding-block: clamp(48px, 10vh, 120px); }
 .landing h1 { font-size: 1.15rem; font-weight: 600; margin-top: 1.5rem; letter-spacing: -.01em; }
 .tagline { color: var(--ink-3); margin: .2em 0 0; font-size: .9rem; }
 
@@ -512,12 +512,15 @@ details.reasoning summary:focus-visible { outline: 2px solid var(--brand); outli
 .rail { display: none; }
 
 @media (min-width: 940px) {
-  .wrap { max-width: 1080px; }
+  .wrap { max-width: 1240px; }
 
   /* landing: the mark beside the copy */
-  .landing-in { display: grid; grid-template-columns: 300px 1fr; gap: 56px; align-items: center; }
-  .landing .logo { width: 100%; max-width: 300px; }
-  .landing-copy h1 { margin-top: 0; font-size: 1.35rem; }
+  .landing { display: flex; align-items: center; }
+  .landing-in { width: 100%; display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 620px); gap: clamp(64px, 8vw, 128px); align-items: center; justify-content: center; }
+  .landing .logo { width: 100%; max-width: 440px; }
+  .landing-copy h1 { margin-top: 0; font-size: clamp(1.8rem, 2.5vw, 2.35rem); }
+  .landing-copy .tagline { font-size: 1.05rem; }
+  .landing-copy .lede { max-width: 38em; font-size: 1.08rem; line-height: 1.65; }
   .landing .history { grid-column: 1 / -1; }
 
   /* assessment: rail and question are separate scrolling frames */
