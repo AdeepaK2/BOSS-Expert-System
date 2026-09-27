@@ -240,7 +240,7 @@ function renderControl(c, num) {
       if (v !== '') clearMissing();
       updateCalc();
     };
-    input.onchange = () => { if (answered(c)) advanceWithin(c.id, true); };
+    input.onchange = () => { if (answered(c)) advanceWithin(c.id, false); };
     input.onkeydown = e => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
