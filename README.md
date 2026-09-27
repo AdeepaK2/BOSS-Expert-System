@@ -20,9 +20,32 @@ the knowledge editor can save):
 npm run serve          # http://localhost:8080/web/
 ```
 
-**Published.** Push to GitHub and enable Pages on the repository root —
-`index.html` redirects into `web/`, and `.nojekyll` keeps the vendor files
-intact.
+## Deploying the expert system with GitHub Pages
+
+The production-ready static site is in `deploy/`. It contains only the
+assessment interface, Tau-Prolog runtime, bundled knowledge base and image
+assets. The knowledge editor, local server, tests and editable `kb/` source
+files are not published.
+
+The workflow in `.github/workflows/pages.yml` uploads only `deploy/` whenever
+the `main` branch is pushed. Enable it once on GitHub under **Settings → Pages →
+Build and deployment → Source → GitHub Actions**, then commit and push:
+
+```
+git add deploy .github/workflows/pages.yml
+git commit -m "Deploy expert system with GitHub Pages"
+git push origin main
+```
+
+The site is published at:
+
+```
+https://adeepak2.github.io/BOSS-Expert-System/
+```
+
+When the assessment interface changes, update the corresponding files in
+`deploy/` before pushing. After changing files in `kb/`, run `node build.js`
+and copy the regenerated `web/kb-bundle.js` into `deploy/`.
 
 ## Knowledge editor
 
@@ -47,9 +70,9 @@ keeps the old files in `kb/.history/`, and rebuilds the bundles. Form
 edits change only the clause or line concerned, so comments and layout
 in the `.pl` files survive.
 
-Opened from disk or GitHub Pages, the editor is read-only: it still
-validates, and **Export** downloads the changed files. See DECISIONS.md,
-decisions 18 and 19.
+Opened directly from disk, the editor is read-only: it still validates, and
+**Export** downloads the changed files. The editor is deliberately excluded
+from `deploy/` and the GitHub Pages site. See DECISIONS.md, decisions 18 and 19.
 
 ## Layout
 
@@ -85,6 +108,9 @@ test/
   run_browser.js      drives the real page in Chromium
   run_kbcheck.js      runs the checker on the shipped KB, plus ten mutations it must catch
 
+deploy/               expert-system-only static GitHub Pages package
+.github/workflows/
+  pages.yml           publishes only deploy/ when main is pushed
 build.js              regenerates the two bundles from kb/ and test/
 server.js             serves the app and saves editor changes; no dependencies
 DECISIONS.md          the five underdetermined SRS points, and how they were resolved
