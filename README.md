@@ -1,4 +1,4 @@
-# B0SS — Business Opportunity Screening System
+# B0SS - Business Opportunity Screening System
 
 A rule-based expert system that gives a first-pass screening on a proposed
 small business. It applies 25 IF–THEN rules captured from a small-business
@@ -75,7 +75,7 @@ from `deploy/` and the GitHub Pages site. See DECISIONS.md, decisions 18 and 19.
 ## Layout
 
 ```
-kb/                   the knowledge base — no interface code
+kb/                   the knowledge base - no interface code
   boss_kb.pl          25 fixed domain facts (SRS §5)
   boss_derive.pl      session-fact declarations and derived values (§4.2)
   boss_rules.pl       the 25 expert rules with their certainty factors (§7)
@@ -84,7 +84,7 @@ kb/                   the knowledge base — no interface code
   boss_kbcheck.pl     knowledge-base verification for the editor; not
                       loaded by the assessment
 
-web/                  the interface — no business knowledge
+web/                  the interface - no business knowledge
   index.html          page shell
   schema.js           which control creates which Prolog fact (§4.1);
                       7 sections, 9 questions, 15 inputs

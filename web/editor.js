@@ -389,7 +389,7 @@ function ruleRow(r) {
   const head = el('button', 'rule-head');
   head.setAttribute('aria-expanded', open);
   const main = el('span', 'rule-main');
-  main.append(el('span', 'rule-concl mono', r.concl), el('span', 'rule-text', textOf('rule_text', r.id) || '—'));
+  main.append(el('span', 'rule-concl mono', r.concl), el('span', 'rule-text', textOf('rule_text', r.id) || 'Not set'));
   head.append(el('span', 'rid', r.id.toUpperCase()), main, el('span', 'rule-flags'), el('span', 'rule-cf mono', fmtCF(r.cf)));
   head.onclick = () => {
     state.open.has(r.id) ? state.open.delete(r.id) : state.open.add(r.id);
@@ -414,7 +414,7 @@ function ruleRow(r) {
 
   const lvl = el('select');
   const cur = levelOf(r.id);
-  if (cur == null) { const o = el('option', null, 'none — never fires'); o.value = ''; lvl.append(o); }
+  if (cur == null) { const o = el('option', null, 'none (never fires)'); o.value = ''; lvl.append(o); }
   for (const [v, l] of LEVELS) { const o = el('option', null, l); o.value = v; lvl.append(o); }
   lvl.value = cur == null ? '' : cur;
   lvl.onchange = () => setLevel(r.id, lvl.value ? +lvl.value : null);
@@ -434,7 +434,7 @@ function ruleRow(r) {
   body.append(vocabPicker(cond));
 
   const txt = el('input'); txt.value = textOf('rule_text', r.id);
-  txt.onchange = () => { setText('rule_text', r.id, txt.value); head.querySelector('.rule-text').textContent = txt.value.trim() || '—'; };
+  txt.onchange = () => { setText('rule_text', r.id, txt.value); head.querySelector('.rule-text').textContent = txt.value.trim() || 'Not set'; };
   const act = el('input'); act.value = textOf('next_action', r.id);
   act.placeholder = 'Only needed when the rule raises a concern (negative CF)';
   act.onchange = () => setText('next_action', r.id, act.value);

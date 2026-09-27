@@ -39,7 +39,7 @@ async function loadKB() {
       console.info('B0SS: serving kb/*.pl failed, using kb-bundle.js', e.message);
     }
   }
-  if (!window.BOSS_KB) throw new Error('kb-bundle.js missing — run: node build.js');
+  if (!window.BOSS_KB) throw new Error('kb-bundle.js is missing. Run: node build.js');
   kbSource = ':- use_module(library(lists)).\n' + KB_FILES.map(f => window.BOSS_KB[f]).join('\n');
   return kbSource;
 }
@@ -311,7 +311,7 @@ function updateCalc() {
   const a = state.answers;
   const s = a.startup_cost, m = a.monthly_cost, c = a.capital_available;
   if (typeof s !== 'number' || typeof m !== 'number') {
-    box.innerHTML = '<div class="calc-row"><span>Capital requirement</span><b>—</b></div>';
+    box.innerHTML = '<div class="calc-row"><span>Capital requirement</span><b>Not calculated</b></div>';
     return;
   }
   const req = s + 6 * m;
@@ -512,7 +512,7 @@ function gateWhy(gate, d, r) {
   const v = d.detail;
   if (gate === 'scope' && d.state === 'exit') return 'Business type: ' + v;
   if (gate === 'override' && d.state === 'exit')
-    return (Array.isArray(v) ? v : [v]).map(id => id.toUpperCase() + ' — ' + (r.ruleText[id] || '')).join(' ');
+    return (Array.isArray(v) ? v : [v]).map(id => id.toUpperCase() + ': ' + (r.ruleText[id] || '')).join(' ');
   if (gate === 'unknowns' && d.state === 'exit' && Array.isArray(v))
     return 'Unknown: ' + v.join(', ');
   if ((gate === 'proceed' || gate === 'caution') && typeof v === 'number')
@@ -561,9 +561,9 @@ function renderResult() {
   if (outOfScope) {
     host.appendChild(el('div', 'disclaimer',
       'B0SS screens small service, retail, online, education, professional-service, food and ' +
-      'owner-trade businesses. Anything needing specialist regulatory or technical judgement — ' +
-      'pharmacy, finance, insurance, alcohol, firearms, franchises, construction, agriculture — ' +
-      'is out of scope. (SRS \u00A72)'));
+      'owner-trade businesses. Businesses needing specialist regulatory or technical judgement ' +
+      'are out of scope. Examples include pharmacy, finance, insurance, alcohol, firearms, ' +
+      'franchises, construction and agriculture. (SRS \u00A72)'));
     side.appendChild(resultFoot(false));
     return;
   }
@@ -847,7 +847,7 @@ function history() {
 }
 function writeHistory(list) {
   try { localStorage.setItem(STORE, JSON.stringify(list)); }
-  catch (e) { toast('Could not save — browser storage is unavailable.'); }
+  catch (e) { toast('Could not save because browser storage is unavailable.'); }
 }
 
 function saveAssessment(name) {
@@ -913,7 +913,7 @@ async function openSaved(entry) {
 let demoAt = 0;
 function loadDemo() {
   const cases = window.BOSS_CASES || [];
-  if (!cases.length) { toast('Example cases are not built — run: node build.js'); return; }
+  if (!cases.length) { toast('Example cases are not built. Run: node build.js'); return; }
   const c = cases[demoAt % cases.length];
   demoAt++;
   state.answers = answersFromFacts(c.answers);
@@ -953,6 +953,6 @@ document.addEventListener('keydown', e => {
 });
 
 // Warm the engine so the first result is instant (NFR-Performance).
-loadKB().catch(e => console.warn('B0SS: knowledge base not preloaded —', e.message));
+loadKB().catch(e => console.warn('B0SS: knowledge base not preloaded:', e.message));
 
 })();

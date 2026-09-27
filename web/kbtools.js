@@ -1,5 +1,5 @@
 /* ============================================================
-   B0SS — web/kbtools.js
+   B0SS - web/kbtools.js
    Validation of a (possibly edited) knowledge base: consult it,
    run kb/boss_kbcheck.pl, replay the SRS section 12 cases and
    measure rule coverage.

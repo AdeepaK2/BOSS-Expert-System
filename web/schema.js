@@ -1,10 +1,10 @@
 /* ============================================================
-   B0SS — schema.js
+   B0SS - schema.js
    The seven sections, the questions in each, and which Prolog
    fact every control creates (SRS 4.1).
 
    A QUESTION is one numbered block. It may hold several short
-   CONTROLS — SRS 4.1 explicitly permits this: "The interface may
+   CONTROLS - SRS 4.1 explicitly permits this: "The interface may
    place several short controls on one screen. This keeps the
    demonstration brief without reducing the number of facts
    available to the inference engine."
@@ -13,7 +13,7 @@
    several facts together (R01–R03 demand, R15–R17 owner, R18
    channel) one control creates all of them, via the facts object
    on each option. No combination the rules can distinguish is
-   lost — see DECISIONS.md, decision 11.
+   lost - see DECISIONS.md, decision 11.
 
    This file holds no business logic: every rule, certainty factor
    and piece of advice lives in kb/*.pl. It is loaded both by the
@@ -55,17 +55,17 @@ const SECTIONS = [
         // channel question rather than costing a question of its own.
         { id: 'channel', label: 'How do customers reach you?',
           options: [
-            ['walkin_new',    'A physical place — my first location', 'Shop, salon, outlet',
+            ['walkin_new',    'A physical place, my first location', 'Shop, salon, outlet',
               { channel_type: 'walk_in', venture_type: 'new' }],
-            ['walkin_branch', 'A physical place — an additional branch', '',
+            ['walkin_branch', 'A physical place, an additional branch', '',
               { channel_type: 'walk_in', venture_type: 'branch' }],
-            ['online_new',    'Entirely online — my first', '',
+            ['online_new',    'Entirely online, my first business', '',
               { channel_type: 'online', venture_type: 'new' }],
-            ['online_branch', 'Entirely online — alongside an existing business', '',
+            ['online_branch', 'Entirely online, alongside an existing business', '',
               { channel_type: 'online', venture_type: 'branch' }],
-            ['hybrid_new',    'Both — my first location', '',
+            ['hybrid_new',    'Both physical and online, my first location', '',
               { channel_type: 'hybrid', venture_type: 'new' }],
-            ['hybrid_branch', 'Both — an additional branch', '',
+            ['hybrid_branch', 'Both physical and online, an additional branch', '',
               { channel_type: 'hybrid', venture_type: 'branch' }]
           ] }
       ]
@@ -133,20 +133,20 @@ const SECTIONS = [
         { id: 'owner', label: 'Have you done this work yourself, and can you give it the hours?',
           help: 'The hours the business needs, not the hours you have spare.',
           options: [
-            ['direct_full', 'I have done this exact work — and I can give it full hours', '',
+            ['direct_full', 'I have done this exact work and can give it full hours', '',
               { owner_experience: 'direct', owner_time: 'sufficient' }],
-            ['direct_part', 'I have done this exact work — but only part-time', '',
+            ['direct_part', 'I have done this exact work, but only part-time', '',
               { owner_experience: 'direct', owner_time: 'insufficient' }],
-            ['related_full', 'Something closely related — and I can give it full hours', '',
+            ['related_full', 'Something closely related, with full-time availability', '',
               { owner_experience: 'related', owner_time: 'sufficient' }],
-            ['related_part', 'Something closely related — but only part-time', '',
+            ['related_part', 'Something closely related, but only part-time', '',
               { owner_experience: 'related', owner_time: 'insufficient' }],
-            ['none_rev_full', 'No experience — but I could stop within a month, and I am there full-time',
+            ['none_rev_full', 'No experience, but I could stop within a month and work full-time',
               'Low fixed costs, nothing locked in',
               { owner_experience: 'none', reversibility: 'high', owner_time: 'sufficient' }],
-            ['none_rev_part', 'No experience — I could stop cheaply, but only part-time', '',
+            ['none_rev_part', 'No experience; I could stop cheaply, but only work part-time', '',
               { owner_experience: 'none', reversibility: 'high', owner_time: 'insufficient' }],
-            ['none_locked_full', 'No experience — and stopping would cost me a lot',
+            ['none_locked_full', 'No experience, and stopping would cost me a lot',
               'A lease, staff or heavy equipment',
               { owner_experience: 'none', reversibility: 'low', owner_time: 'sufficient' }],
             ['none_locked_part', 'No experience, locked in, and only part-time', '',
@@ -249,23 +249,23 @@ const SECTIONS = [
         { id: 'market', label: 'Who else does this, and why would a customer choose you?',
           help: 'One narrow, defensible reason beats being better overall.',
           options: [
-            ['few_strong', 'Few competitors — and I have a specific reason to be chosen', '',
+            ['few_strong', 'Few competitors; I have a specific reason to be chosen', '',
               { competition: 'few', differentiation: 'strong' }],
-            ['few_price', 'Few competitors — mainly I would be cheaper', '',
+            ['few_price', 'Few competitors; mainly I would be cheaper', '',
               { competition: 'few', differentiation: 'price_only' }],
-            ['few_none', 'Few competitors — nothing specific sets me apart', '',
+            ['few_none', 'Few competitors; nothing specific sets me apart', '',
               { competition: 'few', differentiation: 'none' }],
-            ['weak_strong', 'Many competitors but poor ones — and I have a specific reason', '',
+            ['weak_strong', 'Many poor competitors; I have a specific reason to be chosen', '',
               { competition: 'many_weak', differentiation: 'strong' }],
-            ['weak_price', 'Many poor competitors — mainly I would be cheaper', '',
+            ['weak_price', 'Many poor competitors; mainly I would be cheaper', '',
               { competition: 'many_weak', differentiation: 'price_only' }],
-            ['weak_none', 'Many poor competitors — nothing specific sets me apart', '',
+            ['weak_none', 'Many poor competitors; nothing specific sets me apart', '',
               { competition: 'many_weak', differentiation: 'none' }],
-            ['strong_strong', 'Many strong competitors — but I have a specific reason', '',
+            ['strong_strong', 'Many strong competitors; I have a specific reason to be chosen', '',
               { competition: 'many_strong', differentiation: 'strong' }],
-            ['strong_price', 'Many strong competitors — mainly I would be cheaper', '',
+            ['strong_price', 'Many strong competitors; mainly I would be cheaper', '',
               { competition: 'many_strong', differentiation: 'price_only' }],
-            ['strong_none', 'Many strong competitors — nothing specific sets me apart', '',
+            ['strong_none', 'Many strong competitors; nothing specific sets me apart', '',
               { competition: 'many_strong', differentiation: 'none' }]
           ] },
         { id: 'dependency', fact: 'dependency',
