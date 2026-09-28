@@ -1,12 +1,6 @@
-% ============================================================
-% B0SS - boss_advice.pl
-% Presentation knowledge: what each rule means in plain business
-% language, and the specific next action for every concern
-% (SRS section 10). Kept in the knowledge base rather than the
-% interface so it can be edited without touching the UI (FR-11).
-% ============================================================
+% Labels and advice shown by the interface (SRS section 10).
 
-% ---------- Plain-language reading of each rule ----------
+% Rule explanations
 
 rule_text(r01, 'Repeat customers already pay your price.').
 rule_text(r02, 'Observed demand, and you know the customer.').
@@ -34,7 +28,7 @@ rule_text(r23, 'Nothing argues against detailed planning.').
 rule_text(r24, 'The core case holds; weaknesses need mitigation.').
 rule_text(r25, 'Several serious but fixable problems.').
 
-% ---------- A specific next action for every concern ----------
+% Suggested actions
 
 next_action(r03, 'Get one real payment or signed commitment at your price.').
 next_action(r04, 'Ask 3 likely customers what they pay; check 2 competitors'' prices.').
@@ -51,7 +45,7 @@ next_action(r19, 'Get the dependency in writing and line up a second option.').
 next_action(r20, 'Keep 3 months of household costs outside the business, or delay.').
 next_action(r21, 'Confirm the licence position with the authority first.').
 
-% ---------- Missing information -> what to go and find out ----------
+% Missing information
 
 unknown_label(demand,  'Whether anyone will pay is untested.').
 unknown_label(price,   'The selling price is unvalidated.').
@@ -63,15 +57,14 @@ unknown_action(price,   'Check the price against real competitors and customers.
 unknown_action(capital, 'Work out startup and monthly running costs.').
 unknown_action(legal,   'Find out which licences are needed, and if you can get them.').
 
-% SRS section 6 "validation gap": critical items that are assumed rather
-% than known. These are the heart of what B0SS is for.
+% Validation gaps are assumed rather than known.
 gap_label(test_demand,    'Demand is untested with money.').
 gap_label(validate_price, 'The selling price is unvalidated.').
 
 gap_action(test_demand,    'Take one deposit, pre-order or paid trial.').
 gap_action(validate_price, 'Check the price against 2 competitors and 3 likely customers.').
 
-% ---------- CF labels, SRS section 8 ----------
+% Certainty-factor labels
 
 cf_label(CF, 'Definitely not')    :- CF =< -0.9.
 cf_label(CF, 'Almost certainly not') :- CF > -0.9, CF =< -0.7.
@@ -83,7 +76,7 @@ cf_label(CF, 'Probably')          :- CF >= 0.5, CF < 0.7.
 cf_label(CF, 'Almost certainly')  :- CF >= 0.7, CF < 0.9.
 cf_label(CF, 'Definitely')        :- CF >= 0.9.
 
-% ---------- The six intermediate conclusions (SRS section 6) ----------
+% Intermediate conclusions
 
 conclusion_label(market,     'Demand').
 conclusion_label(competition,'Competition').
@@ -112,8 +105,7 @@ conclusion_word(risk, moderate, 'Moderate').
 conclusion_word(risk, high,     'High').
 conclusion_word(risk, critical, 'Critical').
 
-% Whether a conclusion reads as positive, mixed or negative. Depends on
-% the dimension: 'high' is good for demand and bad for risk.
+% Tone depends on the dimension; high demand is good, high risk is bad.
 conclusion_tone(market, high, good).      conclusion_tone(market, moderate, warn).
 conclusion_tone(market, low, bad).
 conclusion_tone(competition, strong, good). conclusion_tone(competition, adequate, warn).
@@ -127,7 +119,7 @@ conclusion_tone(operations, not_ready, bad).
 conclusion_tone(risk, low, good).         conclusion_tone(risk, moderate, warn).
 conclusion_tone(risk, high, bad).         conclusion_tone(risk, critical, bad).
 
-% ---------- The SRS 9.1 decision ladder, in plain words ----------
+% Decision ladder labels
 
 gate_label(scope,        'Can B0SS screen it?').
 gate_label(override,     'Any deal-breaker?').
@@ -151,7 +143,7 @@ gate_outcome(caution,      proceed_with_caution).
 gate_outcome(in_this_form, not_recommended_in_this_form).
 gate_outcome(insufficient, further_validation_required).
 
-% ---------- Verdict headline text ----------
+% Verdict text
 
 verdict_text(out_of_scope, 'OUTSIDE WHAT B0SS CAN SCREEN').
 verdict_text(proceed, 'PROCEED').

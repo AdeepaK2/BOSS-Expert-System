@@ -1,16 +1,6 @@
-% ============================================================
-% B0SS - boss_derive.pl
-% Working-memory declarations and derived values.
-%
-% SRS section 4.2: these are CALCULATED from user answers and are
-% never asked as separate questions.
-%
-% The clauses in this file are derivation parameters, NOT domain
-% facts: the 25 knowledge-base facts of SRS section 5 remain
-% exactly 25. See DECISIONS.md, decision 1.
-% ============================================================
+% Working memory and values calculated from user answers (SRS 4.2).
 
-% --- Session facts, asserted by the interface (SRS 4.1) ---
+% Session facts supplied by the interface
 :- dynamic(business_type/1).
 :- dynamic(venture_type/1).
 :- dynamic(channel_type/1).
@@ -36,9 +26,7 @@
 :- dynamic(dependency/1).
 :- dynamic(legal_status/1).
 
-% ------------------------------------------------------------
-% SRS 4.2 - arithmetic
-% ------------------------------------------------------------
+% Arithmetic
 
 % capital_requirement = startup_cost + (6 x monthly_operating_cost)
 capital_requirement(C) :-
@@ -47,8 +35,7 @@ capital_requirement(C) :-
     C is S + 6 * M.
 
 % funded_months = max(0, capital_available - startup_cost) / monthly_cost
-% Written as a conditional rather than max/2: Tau-Prolog's evaluable
-% functor coverage is thinner than SWI's.
+% Use a conditional because Tau-Prolog does not fully support max/2.
 funded_months(F) :-
     capital_available(A),
     startup_cost(S),
@@ -66,10 +53,8 @@ survival_gap(G) :-
     breakeven_months(B),
     G is F - B.
 
-% ------------------------------------------------------------
-% Margin: numeric input -> category (decision 1)
+% Margin categories
 % SRS 3.5 rule of thumb: above 30% retail, above 45% services.
-% ------------------------------------------------------------
 
 margin_floor(retail, 30).
 margin_floor(food, 30).
@@ -89,13 +74,7 @@ margin_level(L) :-
     ;                   L = low
     ).
 
-% ------------------------------------------------------------
-% Cost of the money funding the business (needed by R11).
-% Own savings and interest-free family money cost nothing.
-% Any borrowed source uses the rate the user stated; if no rate
-% is known this simply fails, so R11 cannot fire on a guess
-% (NFR-Robustness: the system must not invent defaults).
-% ------------------------------------------------------------
+% Funding cost for R11. Unknown rates fail instead of using a default.
 
 free_capital(own_savings).
 free_capital(family_interest_free).
@@ -108,12 +87,7 @@ effective_funding_cost(R) :-
     \+ free_capital(S),
     stated_rate(R).
 
-% ------------------------------------------------------------
-% Domain validation and scope - what the type facts in boss_kb.pl
-% are for. Every categorical answer must be a value this knowledge
-% base recognises, and the business itself must be one B0SS is
-% allowed to screen (SRS section 2).
-% ------------------------------------------------------------
+% Domain and scope validation (SRS section 2)
 
 known_value(business_type(T))   :- supported_business(T).
 known_value(demand_evidence(unknown)).
@@ -128,17 +102,14 @@ checked_input(cash_cycle(_)).
 checked_input(legal_status(_)).
 checked_input(funding_source(_)).
 
-% An answer this knowledge base does not recognise. The system must
-% not reason from a value it has no facts about.
+% Reject answers outside the known domain.
 unrecognised(Name) :-
     checked_input(Fact),
     call(Fact),
     \+ known_value(Fact),
     functor(Fact, Name, _).
 
-% SRS section 2: B0SS must not evaluate businesses outside the
-% supported list - pharmaceuticals, finance, franchises and the rest
-% need specialist judgement these rules do not contain.
+% Unsupported businesses need specialist assessment.
 in_scope :-
     business_type(T),
     supported_business(T).
@@ -147,11 +118,7 @@ out_of_scope(T) :-
     business_type(T),
     \+ supported_business(T).
 
-% ------------------------------------------------------------
-% Critical unknowns - SRS 9.1 step 2 (decision 4)
-% Demand, price, capital and legal status are the four inputs
-% that block a positive answer when they are not known.
-% ------------------------------------------------------------
+% Unknown demand, price, capital or legal status blocks a positive result.
 
 critical_unknown(demand) :-
     demand_evidence(unknown).

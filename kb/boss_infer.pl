@@ -1,19 +1,5 @@
-% ============================================================
-% B0SS - boss_infer.pl
-% Inference control: rule stratification, severity tables and the
-% SRS section 9.1 priority ladder.
-%
-% Backward chaining is the query strategy (SRS section 4). Rules
-% are grouped into levels so that a rule which asks what another
-% rule concluded can never re-enter its own body:
-%
-%   level 1  intermediate conclusions drawn straight from facts
-%   level 2  intermediate conclusions that consult level 1 (R13)
-%   level 3  recommendation rules (overrides and final verdicts)
-%
-% holds/1 exposes levels 1-2 only, so the final rules can read the
-% intermediate picture while remaining outside it.
-% ============================================================
+% Inference control and the SRS 9.1 priority ladder.
+% Levels 1-2 hold intermediate results; level 3 holds recommendations.
 
 rule_level(r01, 1). rule_level(r02, 1). rule_level(r03, 1).
 rule_level(r04, 1). rule_level(r05, 1). rule_level(r06, 1).
@@ -30,13 +16,7 @@ rule_level(r25, 3).
 unfold(and(A, B), C) :- !, ( unfold(A, C) ; unfold(B, C) ).
 unfold(C, C).
 
-% A rule fires when its body succeeds. Id is always bound before
-% rule/3 is called, so only that one clause is ever executed.
-%
-% The \+ \+ gives exactly one solution per rule. Without it a rule whose
-% body consults holds/1 succeeds once per rule that supports the same
-% conclusion - R23 yields two identical solutions when both R07 and R12
-% conclude financial_readiness(ready).
+% Double negation returns one result when a rule has multiple proofs.
 fires(Id) :-
     rule_level(Id, _),
     \+ \+ rule(Id, _, _).
@@ -51,12 +31,7 @@ holds_upto(L, C) :-
 % Intermediate conclusions visible to the final recommendation rules.
 holds(C) :- holds_upto(2, C).
 
-% ------------------------------------------------------------
-% Severity tables (decision 3)
-% These make the SRS's prose thresholds - "at most two manageable
-% weaknesses", "two or more severe unmitigated risks" - countable,
-% and keep them editable in one place.
-% ------------------------------------------------------------
+% Severity tables used by the recommendation thresholds.
 
 severe_risk(no_market)           :- holds(market_attractiveness(low)).
 severe_risk(owner_unready)       :- holds(owner_readiness(weak)).
@@ -90,23 +65,14 @@ core_positive :-
     \+ holds(owner_readiness(weak)),
     \+ holds(red_flag(severe_underfunding)).
 
-% ------------------------------------------------------------
-% Absolute overrides - SRS 8.1: R10, R11 and R21 bypass all
-% positive evidence.
-% ------------------------------------------------------------
+% R10, R11 and R21 override positive evidence (SRS 8.1).
 
 absolute_override :-
     member(Id, [r10, r11, r21]),
     rule(Id, _, _),
     !.
 
-% ------------------------------------------------------------
-% SRS 9.1 priority order
-% The verdict carries the CF of the rule that decided it (SRS 8.1:
-% "the final recommendation rule has its own CF"), so a CF edited in
-% boss_rules.pl is the CF the user sees. Only the two exits no rule
-% covers - out of scope and the fall-through - state 0.0 here.
-% ------------------------------------------------------------
+% SRS 9.1 priority order. The deciding rule supplies the verdict CF.
 
 recommendation(Rec, CF) :-
     (   out_of_scope(_)
@@ -132,12 +98,7 @@ override_cf(CF) :-
     findall(C, ( override_fired(Id), rule_cf(Id, C) ), Cs),
     sort(Cs, [CF|_]).
 
-% ------------------------------------------------------------
-% The path through the SRS 9.1 ladder that produced this answer.
-% Returned as a list of d(Gate, pass|exit, Detail) so the interface can
-% draw the route actually taken. This is derived from the same checks
-% recommendation/2 makes - it is not a hand-drawn picture of them.
-% ------------------------------------------------------------
+% Decision path as d(Gate, pass|exit, Detail) entries.
 
 override_fired(Id) :-
     member(Id, [r10, r11, r21]),
@@ -174,9 +135,7 @@ decision_path(P) :-
         )
     ).
 
-% ------------------------------------------------------------
-% Explanation support - SRS section 10 / FR-08 / FR-09
-% ------------------------------------------------------------
+% Explanation support (SRS section 10)
 
 % Every rule that fired, with its conclusion and CF, strongest first.
 trace(Trace) :-
@@ -208,9 +167,7 @@ first_n(0, _, []) :- !.
 first_n(_, [], []) :- !.
 first_n(N, [H|T], [H|R]) :- N1 is N - 1, first_n(N1, T, R).
 
-% ------------------------------------------------------------
-% Single entry point queried by the interface.
-% ------------------------------------------------------------
+% Main interface query
 
 assess(assessment(Rec, CF, Pos, Con, Missing, Gaps, Trace, Money, Scope, Concl, Path)) :-
     scope(Scope),
@@ -224,8 +181,7 @@ assess(assessment(Rec, CF, Pos, Con, Missing, Gaps, Trace, Money, Scope, Concl, 
     trace(Trace),
     money(Money).
 
-% The six intermediate conclusions of SRS section 6, for the summary
-% panel. Each is whatever the applicable rules concluded.
+% Intermediate conclusions shown in the summary.
 conclusion(market,     V) :- holds(market_attractiveness(V)).
 conclusion(competition,V) :- holds(competitive_position(V)).
 conclusion(finance,    V) :- holds(financial_readiness(V)).

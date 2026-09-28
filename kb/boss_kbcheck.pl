@@ -1,21 +1,5 @@
-% ============================================================
-% B0SS - boss_kbcheck.pl
-% Knowledge-base verification, used by the knowledge editor.
-%
-% A meta-level program: it reads the rules as data through
-% clause/2 and reports anything that would make the knowledge
-% base inconsistent, incomplete or silently inert. It is not part
-% of the inference the user sees, and the assessment page never
-% loads it.
-%
-%   kb_issues(L)   L = sorted list of i(Severity, Code, Subject)
-%                  Severity is error (the editor refuses to save)
-%                  or warning (saved, but shown to the expert).
-%
-% The interface may assert ui_value(Attribute, Value) for every
-% value the questionnaire can produce (web/schema.js). Values
-% the knowledge base itself enumerates come from known_value/1.
-% ============================================================
+% Editor checks for incomplete, inconsistent or unused knowledge.
+% kb_issues/1 returns sorted i(Severity, Code, Subject) entries.
 
 :- dynamic(ui_value/2).
 :- discontiguous(kb_issue/3).
@@ -24,17 +8,14 @@ kb_issues(L) :-
     findall(i(S, C, X), kb_issue(S, C, X), L0),
     sort(L0, L).
 
-% ------------------------------------------------------------
-% Reading the rule base as data
-% ------------------------------------------------------------
+% Read rules as data
 
 rule_clause(Id, Concl, CF, Body) :-
     clause(rule(Id, Concl, CF), Body).
 
 rule_id(Id) :- rule_clause(Id, _, _, _).
 
-% Every simple goal in a rule body. Negation is kept, so a value
-% tested under \+ is still checked against its domain.
+% Extract simple goals, including those under negation.
 body_goal(G, _) :- var(G), !, fail.
 body_goal((A, B), G)    :- !, ( body_goal(A, G) ; body_goal(B, G) ).
 body_goal((A ; B), G)   :- !, ( body_goal(A, G) ; body_goal(B, G) ).
@@ -52,8 +33,7 @@ builtin((\==)/2).   builtin(true/0).      builtin(fail/0).
 builtin(length/2).  builtin(findall/3).   builtin(sort/2).
 builtin(between/3). builtin(number/1).    builtin(atom/1).
 
-% A session attribute is one the interface asserts: boss_derive.pl
-% declares each of them dynamic (SRS 4.1).
+% Session attributes are dynamic predicates from boss_derive.pl.
 session_attribute(A) :-
     atom(A),
     A \== rule,
@@ -69,8 +49,7 @@ known_attr_value(A, V) :- T =.. [A, V], known_value(T), !.
 known_attr_value(A, V) :- ui_value(A, V), !.
 known_attr_value(A, unknown) :- ui_value(A, _), !.   % the "I don't know" answer
 
-% The categorical values a rule body tests an attribute against:
-% either attr(const), or attr(X) followed by member(X, [...]).
+% Read attr(const) and attr(X) with member(X, [...]) constraints.
 constraint(Body, A, [V]) :-
     body_goal(Body, G),
     G =.. [A, V],
@@ -94,9 +73,7 @@ concludes_term(Id, C) :-
     rule_clause(Id, Concl, _, _),
     unfold(Concl, C).
 
-% ------------------------------------------------------------
 % 1. Certainty factors and identity
-% ------------------------------------------------------------
 
 kb_issue(error, cf_not_number, Id) :-
     rule_clause(Id, _, CF, _),
@@ -114,9 +91,7 @@ kb_issue(error, duplicate_id, Id) :-
     length(Xs, N),
     N > 1.
 
-% ------------------------------------------------------------
-% 2. Completeness: every rule wired into inference and explanation
-% ------------------------------------------------------------
+% 2. Inference and explanation coverage
 
 % Without a level, fires/1 and holds/1 never see the rule.
 kb_issue(error, no_level, Id) :-
@@ -156,9 +131,7 @@ kb_issue(error, reserved_missing, Id) :-
     reserved_rule(Id, _),
     \+ rule_id(Id).
 
-% ------------------------------------------------------------
-% 3. Vocabulary: rules speak only about what the system knows
-% ------------------------------------------------------------
+% 3. Vocabulary
 
 kb_issue(error, undefined_goal, Id-(N/A)) :-
     rule_clause(Id, _, _, Body),
@@ -176,8 +149,7 @@ kb_issue(error, unknown_value, Id-T) :-
     \+ known_attr_value(A, V),
     T =.. [A, V].
 
-% The questionnaire offers an answer the knowledge base would reject
-% as unrecognised (boss_derive.pl), e.g. after a fixed fact is removed.
+% Flag questionnaire values no longer recognised by the knowledge base.
 kb_issue(error, ui_unrecognised, T) :-
     ui_value(A, V),
     T =.. [A, V],
@@ -200,11 +172,7 @@ kb_issue(warning, unsupported_holds, Id-C) :-
     nonvar(C),
     \+ concludes_term(_, C).
 
-% ------------------------------------------------------------
-% 4. Stratification (boss_infer.pl header)
-% A rule may only read conclusions from a level below its own,
-% otherwise holds/1 can re-enter the rule it is proving.
-% ------------------------------------------------------------
+% 4. Stratification: rules may read only lower-level conclusions.
 
 reads_level(holds(_), 2).
 reads_level(holds_upto(K, _), K).
@@ -234,25 +202,20 @@ kb_issue(warning, verdict_below_3, Id) :-
     L < 3,
     concludes_term(Id, recommendation(_)).
 
-% The SRS 9.1 ladder consults R10, R11, R21 and R23-R25 by name. A new
-% verdict rule is traced and explained, but cannot change the verdict.
+% Verdict rules outside the fixed ladder cannot change its result.
 kb_issue(warning, not_in_ladder, Id) :-
     rule_level(Id, 3),
     rule_id(Id),
     \+ reserved_rule(Id, _).
 
-% ------------------------------------------------------------
-% 5. Consistency: two rules that can fire together and disagree
-% ------------------------------------------------------------
+% 5. Conflicting rules
 
-% Attributes that legitimately collect several values at once, and
-% the verdict, whose conflicts the SRS 9.1 ladder resolves.
+% These conclusions may have multiple values.
 multi_valued(validation_gap).
 multi_valued(red_flag).
 multi_valued(recommendation).
 
-% No categorical condition tells the two rules apart. Numeric tests
-% are not compared, so this is a warning, not a proof.
+% Numeric tests are not compared, so conflicts are warnings only.
 exclusive(B1, B2) :-
     constraint(B1, A, V1s),
     constraint(B2, A, V2s),
@@ -271,9 +234,7 @@ kb_issue(warning, conflict, (I1-I2):C1/C2) :-
     V1 \== V2,
     \+ exclusive(B1, B2).
 
-% ------------------------------------------------------------
-% Plain-language reading of each check, for the editor.
-% ------------------------------------------------------------
+% Messages shown in the editor
 
 check_text(cf_not_number,     'Certainty factor is not a number').
 check_text(cf_out_of_range,   'Certainty factor is outside -1 .. 1').
